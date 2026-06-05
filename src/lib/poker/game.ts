@@ -164,6 +164,54 @@ function awardPot(state: PokerState, winnerIndex: number, reason: string): void 
   endHandCleanup(state);
 }
 
+/** ディーラー左隣から時計回りの席順（端数チップ配分用） */
+function sortBySeatFromDealer(state: PokerState, indices: number[]): number[] {
+  const dealer = state.dealerIndex;
+  const n = state.players.length;
+  return [...indices].sort((a, b) => {
+    const distA = (a - dealer + n) % n;
+    const distB = (b - dealer + n) % n;
+    return distA - distB;
+  });
+}
+
+function awardPotChop(
+  state: PokerState,
+  winnerIndices: number[],
+  reason: string,
+): void {
+  const pot = state.pot;
+  const count = winnerIndices.length;
+  const share = Math.floor(pot / count);
+  const remainder = pot % count;
+  const ordered = sortBySeatFromDealer(state, winnerIndices);
+
+  const amounts = new Map<number, number>();
+  for (const idx of ordered) {
+    amounts.set(idx, share);
+  }
+  for (let i = 0; i < remainder; i++) {
+    const idx = ordered[i];
+    amounts.set(idx, (amounts.get(idx) ?? 0) + 1);
+  }
+
+  for (const [idx, amt] of amounts) {
+    state.players[idx].stack += amt;
+  }
+
+  const names = ordered.map((i) => state.players[i].name).join(" と ");
+  const allEqual = ordered.every((i) => amounts.get(i) === share);
+  const detail = allEqual
+    ? `（各 ${share}）`
+    : `（${ordered.map((i) => `${state.players[i].name}: ${amounts.get(i)}`).join(", ")}）`;
+  pushHistory(
+    state,
+    `${names} がポット ${pot} をチョップ${detail}${reason ? `（${reason}）` : ""}`,
+  );
+  state.pot = 0;
+  endHandCleanup(state);
+}
+
 function maybeSingleWinner(state: PokerState): ApplyResult | null {
   const contenders = state.players
     .map((p, i) => ({ p, i }))
@@ -436,5 +484,27 @@ export function distributePotAndEndHand(
   }
   const s = cloneStateBase(state);
   awardPot(s, winnerIndex, "ショーダウン");
+  return { ok: true, state: s };
+}
+
+/** ショーダウン後にポットをチョップ（均等分割）してハンドを閉じる */
+export function distributePotChopAndEndHand(
+  state: PokerState,
+  winnerIndices: number[],
+): ApplyResult {
+  const unique = [...new Set(winnerIndices)];
+  if (unique.length < 2) {
+    return { ok: false, error: "チョップには2人以上の勝者が必要です" };
+  }
+  for (const idx of unique) {
+    if (!state.players[idx]) {
+      return { ok: false, error: "無効な席です" };
+    }
+    if (!inCurrentHand(state.players[idx])) {
+      return { ok: false, error: "チョップ対象がハンドに参加していません" };
+    }
+  }
+  const s = cloneStateBase(state);
+  awardPotChop(s, unique, "ショーダウン");
   return { ok: true, state: s };
 }

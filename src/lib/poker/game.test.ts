@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAction,
   createEmptyPokerState,
+  distributePotChopAndEndHand,
   ensureDerivedArrays,
   startHand,
 } from "./game";
@@ -123,5 +124,74 @@ describe("startHand / applyAction", () => {
     expect(hand2Btn).toBe(hand1Bb);
     expect(hand2Bb).toBe(hand1Btn);
     expect(s.currentPlayerIndex).toBe(hand2Btn);
+  });
+});
+
+describe("distributePotChopAndEndHand", () => {
+  it("splits pot evenly between two winners", () => {
+    let s = sampleTable(3);
+    const r = startHand(s);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+
+    const stacksBefore = s.players.map((p) => p.stack);
+    const pot = s.pot;
+
+    s.round = "Showdown";
+    s.handInProgress = false;
+
+    const w0 = s.players.findIndex((p) => p.position === "D");
+    const w1 = s.players.findIndex((p) => p.position === "BB");
+    expect(w0).toBeGreaterThanOrEqual(0);
+    expect(w1).toBeGreaterThanOrEqual(0);
+
+    const chop = distributePotChopAndEndHand(s, [w0, w1]);
+    expect(chop.ok).toBe(true);
+    if (!chop.ok) return;
+    s = chop.state;
+
+    expect(s.pot).toBe(0);
+    expect(s.handInProgress).toBe(false);
+    expect(s.players[w0].stack - stacksBefore[w0]).toBe(Math.floor(pot / 2));
+    expect(s.players[w1].stack - stacksBefore[w1]).toBe(
+      pot - Math.floor(pot / 2),
+    );
+    expect(s.history.at(-1)).toContain("チョップ");
+  });
+
+  it("rejects chop with fewer than two winners", () => {
+    const s = sampleTable(2);
+    const res = distributePotChopAndEndHand(s, [0]);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toContain("2人以上");
+  });
+
+  it("distributes odd chips to seats left of dealer", () => {
+    let s = sampleTable(3);
+    const r = startHand(s);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+
+    s.pot = 101;
+    s.round = "Showdown";
+    s.handInProgress = false;
+
+    const dealer = s.dealerIndex;
+    const ordered = [0, 1, 2].sort((a, b) => {
+      const n = s.players.length;
+      return ((a - dealer + n) % n) - ((b - dealer + n) % n);
+    });
+
+    const stacksBefore = s.players.map((p) => p.stack);
+    const chop = distributePotChopAndEndHand(s, ordered);
+    expect(chop.ok).toBe(true);
+    if (!chop.ok) return;
+    s = chop.state;
+
+    const gains = ordered.map((i) => s.players[i].stack - stacksBefore[i]);
+    expect(gains).toEqual([34, 34, 33]);
   });
 });

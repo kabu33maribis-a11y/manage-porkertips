@@ -13,6 +13,7 @@ export type ClientToServerMessage =
         | { kind: "action"; playerIndex: number; action: PokerAction }
         | { kind: "startHand" }
         | { kind: "showdown"; winnerIndex: number }
+        | { kind: "chop"; winnerIndices: number[] }
         | { kind: "reset" };
     };
 
@@ -27,6 +28,7 @@ export type ServerToClientMessage =
         | { kind: "action"; playerIndex: number; action: PokerAction }
         | { kind: "startHand" }
         | { kind: "showdown"; winnerIndex: number }
+        | { kind: "chop"; winnerIndices: number[] }
         | { kind: "reset" };
     }
   | { type: "error"; message: string };

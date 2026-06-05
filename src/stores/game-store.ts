@@ -6,6 +6,7 @@ import {
   applyAction,
   createEmptyPokerState,
   distributePotAndEndHand,
+  distributePotChopAndEndHand,
   ensureDerivedArrays,
   startHand,
 } from "@/lib/poker";
@@ -53,6 +54,7 @@ interface GameStore {
   startNewHand: () => string | null;
   submitAction: (playerIndex: number, action: PokerAction) => string | null;
   showdownWinner: (winnerIndex: number) => string | null;
+  showdownChop: (winnerIndices: number[]) => string | null;
   resetSession: () => void;
 }
 
@@ -196,6 +198,8 @@ export const useGameStore = create<GameStore>()(
               void get().startNewHand();
             } else if (payload.kind === "showdown") {
               void get().showdownWinner(payload.winnerIndex);
+            } else if (payload.kind === "chop") {
+              void get().showdownChop(payload.winnerIndices);
             } else if (payload.kind === "reset") {
               void get().resetSession();
             }
@@ -416,6 +420,43 @@ export const useGameStore = create<GameStore>()(
         return null;
       }
       const res = distributePotAndEndHand(get().poker, winnerIndex);
+      if (!res.ok) return res.error;
+      const autoStart = startHand(res.state);
+      set((draft) => {
+        draft.poker = autoStart.ok ? autoStart.state : res.state;
+      });
+      queuePersist(get().poker);
+      const nextState = get();
+      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
+        const msg: ClientToServerMessage = {
+          type: "state_push",
+          roomCode: nextState.realtimeRoomCode,
+          state: nextState.poker,
+          senderId: nextState.clientId,
+        };
+        ws.send(JSON.stringify(msg));
+      }
+      return null;
+    },
+
+    showdownChop: (winnerIndices) => {
+      const state = get();
+      if (
+        state.realtimeConnected &&
+        state.realtimeRole === "guest" &&
+        ws &&
+        !forwardingRequest
+      ) {
+        const req: ClientToServerMessage = {
+          type: "request",
+          roomCode: state.realtimeRoomCode,
+          senderId: state.clientId,
+          payload: { kind: "chop", winnerIndices },
+        };
+        ws.send(JSON.stringify(req));
+        return null;
+      }
+      const res = distributePotChopAndEndHand(get().poker, winnerIndices);
       if (!res.ok) return res.error;
       const autoStart = startHand(res.state);
       set((draft) => {
