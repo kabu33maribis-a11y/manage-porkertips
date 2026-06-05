@@ -147,6 +147,37 @@ export function PokerTable() {
           <PlayerSetup locked={showdownPending} />
         </section>
 
+        <div className="divider-gold" />
+
+        {/* Hand Start button */}
+        <Button
+          type="button"
+          size="lg"
+          onClick={onStart}
+          disabled={poker.players.length < 2 || poker.handInProgress || showdownPending}
+          className="h-14 w-full rounded-xl text-base font-bold tracking-wide shadow-md disabled:opacity-40"
+        >
+          {showdownPending
+            ? "ショーダウン結果を先に確定"
+            : poker.handInProgress
+              ? "ハンド進行中…"
+              : "ハンド開始"}
+        </Button>
+        {handErr && (
+          <p className="text-center text-sm text-red-500" role="alert">
+            {handErr}
+          </p>
+        )}
+
+        {/* Showdown */}
+        <ShowdownPanel />
+
+        {/* Log */}
+        <section className="space-y-2">
+          <SectionLabel>ゲームログ</SectionLabel>
+          <GameLog />
+        </section>
+
         {/* Realtime */}
         <section className="space-y-3">
           <SectionLabel>リアルタイム共有</SectionLabel>
@@ -207,37 +238,6 @@ export function PokerTable() {
               <p className="mt-1 text-xs text-red-500">{realtimeError}</p>
             )}
           </div>
-        </section>
-
-        <div className="divider-gold" />
-
-        {/* Hand Start button */}
-        <Button
-          type="button"
-          size="lg"
-          onClick={onStart}
-          disabled={poker.players.length < 2 || poker.handInProgress || showdownPending}
-          className="h-14 w-full rounded-xl text-base font-bold tracking-wide shadow-md disabled:opacity-40"
-        >
-          {showdownPending
-            ? "ショーダウン結果を先に確定"
-            : poker.handInProgress
-              ? "ハンド進行中…"
-              : "ハンド開始"}
-        </Button>
-        {handErr && (
-          <p className="text-center text-sm text-red-500" role="alert">
-            {handErr}
-          </p>
-        )}
-
-        {/* Showdown */}
-        <ShowdownPanel />
-
-        {/* Log */}
-        <section className="space-y-2">
-          <SectionLabel>ゲームログ</SectionLabel>
-          <GameLog />
         </section>
       </motion.div>
 
