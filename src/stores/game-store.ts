@@ -260,6 +260,7 @@ export const useGameStore = create<GameStore>()(
       }
       set((draft) => {
         if (draft.poker.handInProgress) return;
+        if (draft.poker.players.length >= 4) return;
         const id =
           typeof crypto !== "undefined" && crypto.randomUUID
             ? crypto.randomUUID()

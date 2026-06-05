@@ -8,6 +8,7 @@ import { BettingControls } from "@/features/betting/betting-controls";
 import { PlayerSetup } from "@/features/players/player-setup";
 import { GameLog } from "@/features/game/game-log";
 import { ShowdownPanel } from "@/features/game/showdown-panel";
+import { TurnIndicator } from "@/features/turn/turn-indicator";
 import { useHydrateGame } from "@/hooks/use-hydrate-game";
 import { useGameStore } from "@/stores/game-store";
 
@@ -26,16 +27,16 @@ function Stat({
     <div
       className={`rounded-xl border px-3 py-2.5 ${
         gold
-          ? "border-amber-500/40 bg-amber-500/10 shadow-[0_0_12px_oklch(0.78_0.14_84/0.15)]"
-          : "border-white/10 bg-white/[0.04]"
+          ? "border-amber-400 bg-amber-50 shadow-sm"
+          : "border-border bg-card"
       }`}
     >
-      <p className="text-[10px] font-medium uppercase tracking-wider text-white/40">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p
         className={`font-semibold tabular-nums tracking-tight ${
-          gold ? "text-lg text-amber-300" : "text-sm text-white/80"
+          gold ? "text-lg text-amber-700" : "text-sm text-foreground"
         }`}
       >
         {value}
@@ -47,9 +48,9 @@ function Stat({
 function TableSkeleton() {
   return (
     <div className="mx-auto max-w-lg space-y-4 px-4 py-8">
-      <div className="h-24 animate-pulse rounded-2xl bg-white/5" />
-      <div className="h-40 animate-pulse rounded-2xl bg-white/[0.03]" />
-      <div className="h-32 animate-pulse rounded-2xl bg-white/[0.03]" />
+      <div className="h-24 animate-pulse rounded-2xl bg-muted" />
+      <div className="h-40 animate-pulse rounded-2xl bg-muted/60" />
+      <div className="h-32 animate-pulse rounded-2xl bg-muted/60" />
     </div>
   );
 }
@@ -90,7 +91,7 @@ export function PokerTable() {
   return (
     <div className="relative min-h-dvh">
       {/* ── HEADER ────────────────────────────────────────── */}
-      <header className="safe-top sticky top-0 z-30 border-b border-white/[0.08] bg-background/90 backdrop-blur-xl">
+      <header className="safe-top sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-3">
           {/* Street progress */}
           <div className="flex items-center gap-1">
@@ -102,10 +103,10 @@ export function PokerTable() {
                   <div
                     className={`flex h-6 min-w-0 flex-1 items-center justify-center rounded px-1.5 text-[9px] font-semibold tracking-wide transition-all ${
                       isCurrent
-                        ? "bg-amber-500/25 text-amber-300 ring-1 ring-amber-500/40"
+                        ? "bg-amber-100 text-amber-700 ring-1 ring-amber-400"
                         : isDone
-                          ? "bg-white/[0.06] text-white/35 line-through"
-                          : "bg-white/[0.03] text-white/20"
+                          ? "bg-muted text-muted-foreground line-through"
+                          : "bg-muted/50 text-muted-foreground/60"
                     }`}
                   >
                     {street}
@@ -113,7 +114,7 @@ export function PokerTable() {
                   {index < STREETS.length - 1 && (
                     <div
                       className={`h-px w-1.5 shrink-0 ${
-                        isDone ? "bg-amber-500/40" : "bg-white/10"
+                        isDone ? "bg-amber-400" : "bg-border"
                       }`}
                     />
                   )}
@@ -135,6 +136,11 @@ export function PokerTable() {
         layout
         className={`mx-auto max-w-lg space-y-5 px-4 pt-5 ${bettingOpen ? "pb-56" : "pb-10"} safe-bottom`}
       >
+        {/* Turn indicator */}
+        {poker.handInProgress && poker.round !== "Showdown" && (
+          <TurnIndicator />
+        )}
+
         {/* Players + Setup */}
         <section className="space-y-3">
           <SectionLabel>テーブル</SectionLabel>
@@ -144,26 +150,26 @@ export function PokerTable() {
         {/* Realtime */}
         <section className="space-y-3">
           <SectionLabel>リアルタイム共有</SectionLabel>
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
             <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
               <Input
                 value={wsUrlInput}
                 onChange={(e) => setWsUrlInput(e.target.value)}
                 placeholder="ws://localhost:8787"
-                className="h-9 border-white/[0.12] bg-white/[0.04] text-sm text-white/80 placeholder:text-white/25"
+                className="h-9 text-sm"
               />
               <Input
                 value={roomCodeInput}
                 onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
                 placeholder="ROOM001"
-                className="h-9 border-white/[0.12] bg-white/[0.04] text-sm text-white/80 placeholder:text-white/25"
+                className="h-9 text-sm"
               />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                className="h-8 border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100"
                 onClick={() =>
                   connectRealtime({ url: wsUrlInput, roomCode: roomCodeInput, role: "host" })
                 }
@@ -173,7 +179,7 @@ export function PokerTable() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
+                className="h-8"
                 onClick={() =>
                   connectRealtime({ url: wsUrlInput, roomCode: roomCodeInput, role: "guest" })
                 }
@@ -183,22 +189,22 @@ export function PokerTable() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 text-white/40 hover:text-white/60"
+                className="h-8 text-muted-foreground"
                 onClick={disconnectRealtime}
               >
                 切断
               </Button>
-              <span className="text-[11px] text-white/40">
+              <span className="text-[11px] text-muted-foreground">
                 {realtimeConnected
                   ? `✦ 接続中 (${realtimeRole}) · ${realtimeRoomCode}`
                   : "未接続"}
               </span>
             </div>
-            <p className="mt-1.5 text-[10px] text-white/25">
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
               別端末から接続する場合はホストPCのIPアドレスを指定
             </p>
             {realtimeError && (
-              <p className="mt-1 text-xs text-red-400">{realtimeError}</p>
+              <p className="mt-1 text-xs text-red-500">{realtimeError}</p>
             )}
           </div>
         </section>
@@ -211,7 +217,7 @@ export function PokerTable() {
           size="lg"
           onClick={onStart}
           disabled={poker.players.length < 2 || poker.handInProgress || showdownPending}
-          className="h-14 w-full rounded-xl text-base font-bold tracking-wide shadow-lg shadow-amber-950/30 disabled:opacity-40"
+          className="h-14 w-full rounded-xl text-base font-bold tracking-wide shadow-md disabled:opacity-40"
         >
           {showdownPending
             ? "ショーダウン結果を先に確定"
@@ -220,7 +226,7 @@ export function PokerTable() {
               : "ハンド開始"}
         </Button>
         {handErr && (
-          <p className="text-center text-sm text-red-400" role="alert">
+          <p className="text-center text-sm text-red-500" role="alert">
             {handErr}
           </p>
         )}
@@ -242,7 +248,7 @@ export function PokerTable() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/30">
+    <h2 className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
       {children}
     </h2>
   );

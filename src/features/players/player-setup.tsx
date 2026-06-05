@@ -8,49 +8,37 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useGameStore } from "@/stores/game-store";
 
-/** Per-player color tokens — visible on dark felt */
+const MAX_PLAYERS = 4;
+
+/** Per-player color tokens — visible on light background */
 const PLAYER_COLORS = [
   {
-    accent: "bg-rose-400",
-    active: "border-rose-400/50 bg-rose-400/10 shadow-rose-900/40",
-    chip: "border-rose-400/40 bg-rose-400/10 text-rose-300",
-    badge: "border-rose-400/40 text-rose-400",
-    btn: "border-rose-400/40 bg-rose-400/10 text-rose-300 hover:bg-rose-400/20",
+    accent: "bg-rose-500",
+    active: "border-rose-500 bg-rose-50 shadow-md ring-2 ring-rose-400/60",
+    chip: "border-rose-200 bg-rose-50 text-rose-700",
+    badge: "border-rose-300 bg-rose-50 text-rose-600",
+    btn: "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
   },
   {
-    accent: "bg-sky-400",
-    active: "border-sky-400/50 bg-sky-400/10 shadow-sky-900/40",
-    chip: "border-sky-400/40 bg-sky-400/10 text-sky-300",
-    badge: "border-sky-400/40 text-sky-400",
-    btn: "border-sky-400/40 bg-sky-400/10 text-sky-300 hover:bg-sky-400/20",
+    accent: "bg-sky-500",
+    active: "border-sky-500 bg-sky-50 shadow-md ring-2 ring-sky-400/60",
+    chip: "border-sky-200 bg-sky-50 text-sky-700",
+    badge: "border-sky-300 bg-sky-50 text-sky-600",
+    btn: "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100",
   },
   {
-    accent: "bg-violet-400",
-    active: "border-violet-400/50 bg-violet-400/10 shadow-violet-900/40",
-    chip: "border-violet-400/40 bg-violet-400/10 text-violet-300",
-    badge: "border-violet-400/40 text-violet-400",
-    btn: "border-violet-400/40 bg-violet-400/10 text-violet-300 hover:bg-violet-400/20",
+    accent: "bg-violet-500",
+    active: "border-violet-500 bg-violet-50 shadow-md ring-2 ring-violet-400/60",
+    chip: "border-violet-200 bg-violet-50 text-violet-700",
+    badge: "border-violet-300 bg-violet-50 text-violet-600",
+    btn: "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100",
   },
   {
-    accent: "bg-amber-400",
-    active: "border-amber-400/50 bg-amber-400/10 shadow-amber-900/40",
-    chip: "border-amber-400/40 bg-amber-400/10 text-amber-300",
-    badge: "border-amber-400/40 text-amber-400",
-    btn: "border-amber-400/40 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20",
-  },
-  {
-    accent: "bg-teal-400",
-    active: "border-teal-400/50 bg-teal-400/10 shadow-teal-900/40",
-    chip: "border-teal-400/40 bg-teal-400/10 text-teal-300",
-    badge: "border-teal-400/40 text-teal-400",
-    btn: "border-teal-400/40 bg-teal-400/10 text-teal-300 hover:bg-teal-400/20",
-  },
-  {
-    accent: "bg-fuchsia-400",
-    active: "border-fuchsia-400/50 bg-fuchsia-400/10 shadow-fuchsia-900/40",
-    chip: "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-300",
-    badge: "border-fuchsia-400/40 text-fuchsia-400",
-    btn: "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-300 hover:bg-fuchsia-400/20",
+    accent: "bg-amber-500",
+    active: "border-amber-500 bg-amber-50 shadow-md ring-2 ring-amber-400/60",
+    chip: "border-amber-200 bg-amber-50 text-amber-700",
+    badge: "border-amber-300 bg-amber-50 text-amber-600",
+    btn: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
   },
 ] as const;
 
@@ -72,10 +60,12 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
   const [bbStr, setBbStr] = useState(String(poker.bigBlind));
   const [stackStr, setStackStr] = useState(String(initialStack));
 
+  const atMaxPlayers = poker.players.length >= MAX_PLAYERS;
+
   return (
-    <Card className="border-white/[0.08] bg-white/[0.03] shadow-xl shadow-black/30">
+    <Card className="border-border bg-card shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-white/70">
+        <CardTitle className="text-sm font-semibold text-foreground">
           プレイヤー &amp; ブラインド
         </CardTitle>
       </CardHeader>
@@ -84,7 +74,7 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="sb" className="text-xs text-white/50">SB</Label>
+                <Label htmlFor="sb" className="text-xs text-muted-foreground">SB</Label>
                 <Input
                   id="sb"
                   inputMode="numeric"
@@ -96,11 +86,10 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                     setBlinds(v, Math.max(v * 2, poker.bigBlind));
                     setSbStr(String(v));
                   }}
-                  className="border-white/[0.10] bg-white/[0.04] text-white/85"
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="bb" className="text-xs text-white/50">BB</Label>
+                <Label htmlFor="bb" className="text-xs text-muted-foreground">BB</Label>
                 <Input
                   id="bb"
                   inputMode="numeric"
@@ -112,13 +101,12 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                     setBlinds(poker.smallBlind, v);
                     setBbStr(String(v));
                   }}
-                  className="border-white/[0.10] bg-white/[0.04] text-white/85"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="buyin" className="text-xs text-white/50">初期スタック</Label>
+              <Label htmlFor="buyin" className="text-xs text-muted-foreground">初期スタック</Label>
               <Input
                 id="buyin"
                 inputMode="numeric"
@@ -130,11 +118,10 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                   setInitialStack(v);
                   setStackStr(String(Math.floor(v)));
                 }}
-                className="border-white/[0.10] bg-white/[0.04] text-white/85"
               />
             </div>
 
-            <Separator className="bg-white/[0.06]" />
+            <Separator />
 
             <div className="flex gap-2">
               <Input
@@ -142,23 +129,27 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") { addPlayer(name); setName(""); }
+                  if (e.key === "Enter" && !atMaxPlayers) { addPlayer(name); setName(""); }
                 }}
-                className="border-white/[0.10] bg-white/[0.04] text-white/85 placeholder:text-white/25"
+                disabled={atMaxPlayers}
               />
               <Button
                 type="button"
                 className="min-w-16"
+                disabled={atMaxPlayers}
                 onClick={() => { addPlayer(name); setName(""); }}
               >
                 追加
               </Button>
             </div>
+            {atMaxPlayers && (
+              <p className="text-xs text-muted-foreground">最大 {MAX_PLAYERS} 人まで</p>
+            )}
           </>
         )}
 
-        {/* Player cards */}
-        <ul className="flex gap-2 overflow-x-auto pb-1.5">
+        {/* Player cards — 2x2 grid, no horizontal scroll */}
+        <ul className="grid grid-cols-2 gap-2">
           {poker.players.map((p, index) => {
             const isCurrent =
               poker.handInProgress && index === poker.currentPlayerIndex;
@@ -167,17 +158,22 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
             return (
               <li
                 key={p.id}
-                className={`relative min-w-[130px] shrink-0 overflow-hidden rounded-xl border px-3 py-2.5 transition-all duration-200 ${
+                className={`relative overflow-hidden rounded-xl border px-3 py-2.5 transition-all duration-200 ${
                   isCurrent
-                    ? `${c.active} shadow-md ring-1 ring-inset ring-white/10`
-                    : "border-white/[0.08] bg-white/[0.03]"
+                    ? `${c.active} animate-pulse`
+                    : "border-border bg-muted/30"
                 }`}
               >
-                {/* top accent stripe */}
-                <div className={`absolute inset-x-0 top-0 h-0.5 ${c.accent} ${isCurrent ? "opacity-100" : "opacity-40"}`} />
+                {isCurrent && (
+                  <div className="absolute -top-px inset-x-0 flex justify-center">
+                    <span className="rounded-b-md bg-emerald-500 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">
+                      ▶ 番
+                    </span>
+                  </div>
+                )}
 
-                <div className="mt-1 space-y-2">
-                  <p className={`truncate text-sm font-semibold ${isCurrent ? "text-white" : "text-white/70"}`}>
+                <div className={`space-y-2 ${isCurrent ? "mt-3" : "mt-1"}`}>
+                  <p className={`truncate text-sm font-semibold ${isCurrent ? "text-foreground" : "text-muted-foreground"}`}>
                     {p.name}
                   </p>
 
@@ -185,7 +181,9 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                     <span
                       className={`inline-flex h-5 items-center rounded border px-2 text-[9px] font-bold uppercase tracking-wide ${c.badge}`}
                     >
-                      {p.position}
+                      {p.position === "D" && poker.players.filter((pl) => pl.status !== "out").length === 2
+                        ? "BTN/SB"
+                        : p.position}
                     </span>
                   )}
 
@@ -195,13 +193,13 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                     >
                       {p.stack}
                     </span>
-                    <span className="text-[9px] text-white/30">chips</span>
+                    <span className="text-[9px] text-muted-foreground">chips</span>
                   </div>
 
                   {poker.handInProgress && (
-                    <div className="text-[10px] tabular-nums text-white/35">
+                    <div className="text-[10px] tabular-nums text-muted-foreground">
                       投入:{" "}
-                      <span className={`font-semibold ${p.bet > 0 ? "text-white/70" : ""}`}>
+                      <span className={`font-semibold ${p.bet > 0 ? "text-foreground" : ""}`}>
                         {p.bet}
                       </span>
                     </div>
@@ -211,7 +209,7 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 w-full px-1 text-[10px] text-white/30 hover:text-white/60"
+                      className="h-6 w-full px-1 text-[10px] text-muted-foreground hover:text-foreground"
                       onClick={() => removePlayer(p.id)}
                     >
                       削除
@@ -226,11 +224,7 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
         <Button
           type="button"
           variant={confirmReset ? "destructive" : "outline"}
-          className={`w-full ${
-            confirmReset
-              ? ""
-              : "border-white/[0.10] bg-white/[0.03] text-white/40 hover:bg-white/[0.07] hover:text-white/70"
-          }`}
+          className="w-full"
           onClick={() => {
             if (!confirmReset) { setConfirmReset(true); return; }
             resetSession();

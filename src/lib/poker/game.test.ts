@@ -51,16 +51,77 @@ describe("startHand / applyAction", () => {
     expect(winner).toBeTruthy();
   });
 
-  it("heads-up: dealer is SB and hand starts", () => {
+  it("heads-up: button posts SB and hand starts", () => {
     let s = sampleTable(2);
     const r = startHand(s);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     s = r.state;
-    const sb = s.players.findIndex((p) => p.position === "SB");
+    const btn = s.players.findIndex((p) => p.position === "D");
     const bb = s.players.findIndex((p) => p.position === "BB");
-    expect(sb).toBeGreaterThanOrEqual(0);
+    expect(btn).toBeGreaterThanOrEqual(0);
     expect(bb).toBeGreaterThanOrEqual(0);
-    expect(sb).not.toBe(bb);
+    expect(btn).not.toBe(bb);
+    expect(s.currentPlayerIndex).toBe(btn);
+  });
+
+  it("heads-up: preflop BTN acts first, postflop BB acts first", () => {
+    let s = sampleTable(2);
+    let r = startHand(s);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+
+    const btn = s.players.findIndex((p) => p.position === "D");
+    const bb = s.players.findIndex((p) => p.position === "BB");
+
+    expect(s.currentPlayerIndex).toBe(btn);
+
+    r = applyAction(s, btn, { type: "call" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+    expect(s.currentPlayerIndex).toBe(bb);
+
+    r = applyAction(s, bb, { type: "check" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+    expect(s.round).toBe("Flop");
+    expect(s.currentPlayerIndex).toBe(bb);
+
+    r = applyAction(s, bb, { type: "check" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+    expect(s.currentPlayerIndex).toBe(btn);
+  });
+
+  it("heads-up: dealer rotates and turn order swaps on hand 2", () => {
+    let s = sampleTable(2);
+    let r = startHand(s);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+
+    const hand1Btn = s.players.findIndex((p) => p.position === "D");
+    const hand1Bb = s.players.findIndex((p) => p.position === "BB");
+
+    r = applyAction(s, hand1Btn, { type: "fold" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+
+    r = startHand(s);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    s = r.state;
+
+    const hand2Btn = s.players.findIndex((p) => p.position === "D");
+    const hand2Bb = s.players.findIndex((p) => p.position === "BB");
+
+    expect(hand2Btn).toBe(hand1Bb);
+    expect(hand2Bb).toBe(hand1Btn);
+    expect(s.currentPlayerIndex).toBe(hand2Btn);
   });
 });

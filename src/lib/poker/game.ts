@@ -275,7 +275,8 @@ export function startHand(state: PokerState): ApplyResult {
   s.players = assignBlindPositions(s.players, s.dealerIndex);
 
   const bbSeat = s.players.findIndex((p) => p.position === "BB");
-  const sbSeat = s.players.findIndex((p) => p.position === "SB");
+  const sbIdx = s.players.findIndex((p) => p.position === "SB");
+  const sbSeat = sbIdx >= 0 ? sbIdx : s.players.findIndex((p) => p.position === "D");
 
   if (bbSeat < 0 || sbSeat < 0) {
     return { ok: false, error: "ブラインド位置を決定できません" };

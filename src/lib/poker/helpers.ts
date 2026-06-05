@@ -74,10 +74,10 @@ export function assignBlindPositions(
   if (seats.length < 2) return clearPositions(players);
 
   if (seats.length === 2) {
-    const sbSeat = dealerIndex;
+    const btnSeat = dealerIndex;
     const bbSeat = seats.find((s) => s !== dealerIndex)!;
     return players.map((p, i) => {
-      if (i === sbSeat) return { ...p, position: "SB" as const };
+      if (i === btnSeat) return { ...p, position: "D" as const };
       if (i === bbSeat) return { ...p, position: "BB" as const };
       return { ...p, position: null };
     });
@@ -101,21 +101,21 @@ export function firstActorPreflop(players: Player[]): number {
   if (seats.length < 2) return 0;
 
   if (seats.length === 2) {
-    const sb = players.findIndex((p) => p.position === "SB");
-    return sb >= 0 ? sb : seats[0];
+    const btn = players.findIndex((p) => p.position === "D");
+    return btn >= 0 ? btn : seats[0];
   }
 
   const bbSeat = players.findIndex((p) => p.position === "BB");
   if (bbSeat < 0) return seats[0];
-  return nextOccupiedSeat(players, bbSeat);
+  return nextInHandSeat(players, bbSeat) ?? seats[0];
 }
 
-/** ポストフロップ最初のアクション（フロップ〜リバー）: ボタンの次のアクティブ席 */
+/** ポストフロップ最初のアクション（フロップ〜リバー）: ボタンの次のハンド参加席 */
 export function firstActorPostflop(
   players: Player[],
   dealerIndex: number,
 ): number {
-  return nextOccupiedSeat(players, dealerIndex);
+  return nextInHandSeat(players, dealerIndex) ?? dealerIndex;
 }
 
 export function cloneStateBase(state: PokerState): PokerState {

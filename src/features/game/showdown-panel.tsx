@@ -6,12 +6,10 @@ import { inCurrentHand } from "@/lib/poker";
 import { useGameStore } from "@/stores/game-store";
 
 const PLAYER_COLORS = [
-  "border-rose-400/50 bg-rose-400/10 text-rose-300 hover:bg-rose-400/20",
-  "border-sky-400/50 bg-sky-400/10 text-sky-300 hover:bg-sky-400/20",
-  "border-violet-400/50 bg-violet-400/10 text-violet-300 hover:bg-violet-400/20",
-  "border-amber-400/50 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20",
-  "border-teal-400/50 bg-teal-400/10 text-teal-300 hover:bg-teal-400/20",
-  "border-fuchsia-400/50 bg-fuchsia-400/10 text-fuchsia-300 hover:bg-fuchsia-400/20",
+  "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
+  "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100",
+  "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100",
+  "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
 ] as const;
 
 export function ShowdownPanel() {
@@ -23,16 +21,16 @@ export function ShowdownPanel() {
   if (!pending) return null;
 
   return (
-    <section className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-4 shadow-lg shadow-amber-950/30">
+    <section className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
       <div>
-        <p className="text-sm font-semibold text-amber-300">
+        <p className="text-sm font-semibold text-amber-800">
           ショーダウン — 勝者を選択
         </p>
-        <p className="mt-0.5 text-[11px] text-white/40">
+        <p className="mt-0.5 text-[11px] text-amber-700/70">
           ポット {poker.pot} · 実カードで勝者を確認してタップ
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {poker.players.map((pl, i) => {
           const active = inCurrentHand(pl);
           return (
@@ -42,7 +40,7 @@ export function ShowdownPanel() {
               className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
                 active
                   ? PLAYER_COLORS[i % PLAYER_COLORS.length]
-                  : "border-white/[0.08] bg-white/[0.03] text-white/25"
+                  : "border-border bg-muted/30 text-muted-foreground"
               }`}
               disabled={!active}
               onClick={() => {
@@ -55,7 +53,7 @@ export function ShowdownPanel() {
           );
         })}
       </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
     </section>
   );
 }

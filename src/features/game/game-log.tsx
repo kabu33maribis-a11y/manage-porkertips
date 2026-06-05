@@ -7,11 +7,11 @@ export function GameLog() {
   const history = useGameStore((s) => s.poker.history);
 
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
       <ScrollArea className="h-36 pr-2">
         <ul className="space-y-1">
           {history.length === 0 ? (
-            <li className="text-[11px] text-white/25">まだログはありません</li>
+            <li className="text-[11px] text-muted-foreground">まだログはありません</li>
           ) : (
             history
               .slice()
@@ -20,7 +20,7 @@ export function GameLog() {
                 <li
                   key={`${line}-${i}`}
                   className={`break-words text-[11px] ${
-                    i === 0 ? "text-white/70" : "text-white/35"
+                    i === 0 ? "font-medium text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   {line}

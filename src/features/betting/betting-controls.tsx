@@ -91,17 +91,33 @@ export function BettingControls() {
   const isBetting = poker.currentBet === 0;
   const quickButtons = isBetting ? quickBetButtons : quickRaiseButtons;
 
+  const posLabel =
+    p?.position === "D" &&
+    poker.players.filter((pl) => pl.status !== "out").length === 2
+      ? "BTN/SB"
+      : p?.position;
+
   return (
-    <section className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[oklch(0.12_0.038_158/0.95)] px-4 pb-3 pt-3 backdrop-blur-xl">
+    <section className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-3 pt-3 shadow-[0_-4px_20px_oklch(0_0_0/0.06)] backdrop-blur-xl">
       <div className="mx-auto max-w-lg space-y-3">
         {/* Current player info bar */}
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-amber-400">
-            {p?.name ?? "—"}
-          </span>
-          <span className="text-[11px] tabular-nums text-white/35">
-            スタック {p?.stack ?? 0}　·　Pot {poker.pot}
-            {toCall > 0 ? `　·　toCall ${toCall}` : ""}
+        <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+              番
+            </span>
+            <span className="ml-2 text-sm font-bold text-emerald-900">
+              {p?.name ?? "—"}
+            </span>
+            {posLabel && (
+              <span className="ml-1.5 text-[10px] font-semibold text-emerald-600">
+                ({posLabel})
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] tabular-nums text-emerald-700">
+            スタック {p?.stack ?? 0} · Pot {poker.pot}
+            {toCall > 0 ? ` · toCall ${toCall}` : ""}
           </span>
         </div>
 
@@ -109,7 +125,7 @@ export function BettingControls() {
         <div className="grid grid-cols-3 gap-2">
           <Button
             type="button"
-            className="h-12 rounded-xl border border-red-500/40 bg-red-500/15 text-sm font-semibold text-red-400 hover:bg-red-500/25"
+            className="h-12 rounded-xl border border-red-300 bg-red-50 text-sm font-semibold text-red-600 hover:bg-red-100"
             onClick={() => run({ type: "fold" })}
           >
             Fold
@@ -118,8 +134,8 @@ export function BettingControls() {
             type="button"
             className={`h-12 rounded-xl text-sm font-semibold ${
               canCheck
-                ? "border border-white/15 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
-                : "border border-sky-400/40 bg-sky-400/15 text-sky-300 hover:bg-sky-400/25"
+                ? "border border-border bg-muted text-foreground hover:bg-muted/80"
+                : "border border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
             }`}
             disabled={!(canCheck || canCall)}
             onClick={() => run(canCheck ? { type: "check" } : { type: "call" })}
@@ -128,7 +144,7 @@ export function BettingControls() {
           </Button>
           <Button
             type="button"
-            className="h-12 rounded-xl border border-amber-500/40 bg-amber-500/15 text-sm font-semibold text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
+            className="h-12 rounded-xl border border-amber-400 bg-amber-50 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-40"
             disabled={isBetting ? !canBet : !canRaise}
             onClick={() =>
               isBetting
@@ -143,7 +159,7 @@ export function BettingControls() {
         {/* Amount input + quick buttons */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="amount-input" className="text-[10px] text-white/35">
+            <Label htmlFor="amount-input" className="text-[10px] text-muted-foreground">
               {isBetting ? "ベット額" : `レイズ合計（最低 ${minTotal}）`}
             </Label>
           </div>
@@ -154,7 +170,7 @@ export function BettingControls() {
               <Button
                 key={item.label}
                 type="button"
-                className="h-7 rounded-lg border border-white/[0.10] bg-white/[0.04] px-1 text-[10px] font-medium tabular-nums text-white/55 hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-300"
+                className="h-7 rounded-lg border border-border bg-muted/50 px-1 text-[10px] font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
                 onClick={() => {
                   if (isBetting) {
                     applyQuickBet(item.value);
@@ -177,11 +193,11 @@ export function BettingControls() {
             onChange={(e) =>
               isBetting ? setBetAmt(e.target.value) : setRaiseTo(e.target.value)
             }
-            className="h-10 border-white/[0.12] bg-white/[0.05] text-center font-mono text-base font-semibold text-white/85 tabular-nums"
+            className="h-10 text-center font-mono text-base font-semibold tabular-nums"
           />
         </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
     </section>
   );
