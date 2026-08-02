@@ -24,6 +24,8 @@ export interface PokerState {
   bigBlind: number;
   lastAggressorIndex: number;
   history: string[];
+  /** 現在ハンドのボードカード（ログ用・判定はしない） */
+  board: string[];
   /** 現在のストリートで自発的アクション済み（レイズでリセット） */
   actedThisStreet: boolean[];
   /** ハンド進行中（ブラインド投稿〜ショーダウン/Pot確定まで） */

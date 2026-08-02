@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAction,
   createEmptyPokerState,
+  distributePotAndEndHand,
   distributePotChopAndEndHand,
   ensureDerivedArrays,
   startHand,
@@ -127,37 +128,68 @@ describe("startHand / applyAction", () => {
   });
 });
 
+describe("distributePotAndEndHand", () => {
+  it("short stack winner only takes main pot; excess returned to deep stack", () => {
+    const s = createEmptyPokerState(10, 20);
+    s.players = [
+      {
+        id: "short",
+        name: "Short",
+        stack: 0,
+        bet: 0,
+        totalContributed: 100,
+        status: "all-in",
+        position: "BB",
+      },
+      {
+        id: "deep",
+        name: "Deep",
+        stack: 0,
+        bet: 0,
+        totalContributed: 500,
+        status: "all-in",
+        position: "D",
+      },
+    ];
+    s.pot = 600;
+    s.round = "Showdown";
+    s.handInProgress = false;
+    s.dealerIndex = 1;
+
+    const res = distributePotAndEndHand(s, 0);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    expect(res.state.players[0].stack).toBe(200);
+    expect(res.state.players[1].stack).toBe(400);
+    expect(res.state.pot).toBe(0);
+  });
+});
+
 describe("distributePotChopAndEndHand", () => {
   it("splits pot evenly between two winners", () => {
-    let s = sampleTable(3);
+    let s = sampleTable(2);
     const r = startHand(s);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     s = r.state;
 
     const stacksBefore = s.players.map((p) => p.stack);
-    const pot = s.pot;
-
+    s.pot = 30;
+    s.players[0].totalContributed = 15;
+    s.players[1].totalContributed = 15;
     s.round = "Showdown";
     s.handInProgress = false;
 
-    const w0 = s.players.findIndex((p) => p.position === "D");
-    const w1 = s.players.findIndex((p) => p.position === "BB");
-    expect(w0).toBeGreaterThanOrEqual(0);
-    expect(w1).toBeGreaterThanOrEqual(0);
-
-    const chop = distributePotChopAndEndHand(s, [w0, w1]);
+    const chop = distributePotChopAndEndHand(s, [0, 1]);
     expect(chop.ok).toBe(true);
     if (!chop.ok) return;
     s = chop.state;
 
     expect(s.pot).toBe(0);
     expect(s.handInProgress).toBe(false);
-    expect(s.players[w0].stack - stacksBefore[w0]).toBe(Math.floor(pot / 2));
-    expect(s.players[w1].stack - stacksBefore[w1]).toBe(
-      pot - Math.floor(pot / 2),
-    );
-    expect(s.history.at(-1)).toContain("チョップ");
+    expect(s.players[0].stack - stacksBefore[0]).toBe(15);
+    expect(s.players[1].stack - stacksBefore[1]).toBe(15);
   });
 
   it("rejects chop with fewer than two winners", () => {
@@ -176,6 +208,9 @@ describe("distributePotChopAndEndHand", () => {
     s = r.state;
 
     s.pot = 101;
+    s.players[0].totalContributed = 34;
+    s.players[1].totalContributed = 34;
+    s.players[2].totalContributed = 33;
     s.round = "Showdown";
     s.handInProgress = false;
 

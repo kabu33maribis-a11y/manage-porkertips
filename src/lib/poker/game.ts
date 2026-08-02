@@ -12,6 +12,7 @@ import {
   ROUND_ORDER,
   canVoluntarilyAct,
 } from "./helpers";
+import { computeSidePots, distributeSidePots } from "./pots";
 
 export type ApplyResult =
   | { ok: true; state: PokerState }
@@ -72,7 +73,68 @@ function syncActedLength(state: PokerState): void {
 
 export function ensureDerivedArrays(state: PokerState): PokerState {
   syncActedLength(state);
+  if (!state.board) state.board = [];
   return state;
+}
+
+/** 自由記述のログ行を追加（カードメモ等） */
+export function appendHistoryNote(state: PokerState, note: string): ApplyResult {
+  const trimmed = note.trim().replace(/\s+/g, " ");
+  if (!trimmed) return { ok: false, error: "内容が空です" };
+  const s = cloneStateBase(state);
+  pushHistory(s, trimmed);
+  return { ok: true, state: s };
+}
+
+const STREET_CARD_LABELS: Partial<Record<PokerState["round"], string>> = {
+  Flop: "フロップ",
+  Turn: "ターン",
+  River: "リバー",
+};
+
+/** 現在ストリートのボードカードを簡潔に記録 */
+export function recordBoardCards(state: PokerState, cardsText: string): ApplyResult {
+  const label = STREET_CARD_LABELS[state.round];
+  if (!label) {
+    return { ok: false, error: "フロップ〜リバーでのみボードを記録できます" };
+  }
+  const trimmed = cardsText.trim().replace(/\s+/g, " ");
+  if (!trimmed) return { ok: false, error: "カードを入力してください" };
+
+  const s = cloneStateBase(state);
+  const tokens = trimmed.split(" ").filter(Boolean);
+  if (s.round === "Flop") {
+    s.board = tokens;
+  } else {
+    s.board = [...s.board, ...tokens];
+  }
+  pushHistory(s, `${label}: ${trimmed}`);
+  return { ok: true, state: s };
+}
+
+/** ショーダウン時の公開ハンド（ホールカード等）を簡潔に記録 */
+export function recordShowdownCards(state: PokerState, note: string): ApplyResult {
+  if (state.round !== "Showdown") {
+    return { ok: false, error: "ショーダウン中のみ記録できます" };
+  }
+  const trimmed = note.trim().replace(/\s+/g, " ");
+  if (!trimmed) return { ok: false, error: "カードを入力してください" };
+  const s = cloneStateBase(state);
+
+  let handStartIdx = -1;
+  for (let i = s.history.length - 1; i >= 0; i--) {
+    if (s.history[i].includes("ハンド開始")) {
+      handStartIdx = i;
+      break;
+    }
+  }
+  const handSlice = handStartIdx >= 0 ? s.history.slice(handStartIdx) : s.history;
+  const hasBoardInHand = handSlice.some((l) => l.startsWith("ボード:"));
+  if (s.board.length > 0 && !hasBoardInHand) {
+    pushHistory(s, `ボード: ${s.board.join(" ")}`);
+  }
+  pushHistory(s, `公開: ${trimmed}`);
+  return { ok: true, state: s };
 }
 
 /** テーブル初期（プレイヤーなし） */
@@ -89,6 +151,7 @@ export function createEmptyPokerState(smallBlind: number, bigBlind: number): Pok
     bigBlind,
     lastAggressorIndex: 0,
     history: [],
+    board: [],
     actedThisStreet: [],
     handInProgress: false,
   };
@@ -153,15 +216,67 @@ function endHandCleanup(state: PokerState): void {
   state.round = "Pre-flop";
 }
 
-function awardPot(state: PokerState, winnerIndex: number, reason: string): void {
-  const w = state.players[winnerIndex];
-  w.stack += state.pot;
-  pushHistory(
-    state,
-    `${w.name} がポット ${state.pot} を獲得${reason ? `（${reason}）` : ""}`,
-  );
+function applyPotAwards(
+  state: PokerState,
+  awards: Map<string, number>,
+  summary: string,
+): void {
+  for (const p of state.players) {
+    const amt = awards.get(p.id);
+    if (amt) p.stack += amt;
+  }
+  const resultLine = summary.startsWith("結果:") ? summary : `結果: ${summary}`;
+  pushHistory(state, resultLine);
   state.pot = 0;
+  state.board = [];
   endHandCleanup(state);
+}
+
+function formatPotAwards(
+  state: PokerState,
+  awards: Map<string, number>,
+  suffix: string,
+): string {
+  const parts = state.players
+    .map((p) => ({ p, amt: awards.get(p.id) ?? 0 }))
+    .filter(({ amt }) => amt > 0)
+    .map(({ p, amt }) => `${p.name}: ${amt}`);
+
+  if (parts.length === 1) {
+    const { p, amt } = state.players
+      .map((pl) => ({ p: pl, amt: awards.get(pl.id) ?? 0 }))
+      .find(({ amt }) => amt > 0)!;
+    return `${p.name} がポット ${amt} を獲得${suffix}`;
+  }
+
+  return `ポット分配（${parts.join(", ")}）${suffix}`;
+}
+
+function awardPot(state: PokerState, winnerIndex: number, reason: string): void {
+  const winner = state.players[winnerIndex];
+  const sidePots = computeSidePots(state.players);
+  const awards =
+    sidePots.length > 0
+      ? distributeSidePots(state.players, sidePots, [winner.id], {
+          chop: false,
+          dealerIndex: state.dealerIndex,
+        })
+      : new Map([[winner.id, state.pot]]);
+
+  if (sidePots.length === 0) {
+    applyPotAwards(
+      state,
+      awards,
+      `${winner.name} がポット ${state.pot} を獲得${reason ? `（${reason}）` : ""}`,
+    );
+    return;
+  }
+
+  applyPotAwards(
+    state,
+    awards,
+    formatPotAwards(state, awards, reason ? `（${reason}）` : ""),
+  );
 }
 
 /** ディーラー左隣から時計回りの席順（端数チップ配分用） */
@@ -180,36 +295,43 @@ function awardPotChop(
   winnerIndices: number[],
   reason: string,
 ): void {
+  const winnerIds = winnerIndices.map((i) => state.players[i].id);
+  const sidePots = computeSidePots(state.players);
   const pot = state.pot;
-  const count = winnerIndices.length;
-  const share = Math.floor(pot / count);
-  const remainder = pot % count;
-  const ordered = sortBySeatFromDealer(state, winnerIndices);
 
-  const amounts = new Map<number, number>();
-  for (const idx of ordered) {
-    amounts.set(idx, share);
-  }
-  for (let i = 0; i < remainder; i++) {
-    const idx = ordered[i];
-    amounts.set(idx, (amounts.get(idx) ?? 0) + 1);
-  }
+  const awards =
+    sidePots.length > 0
+      ? distributeSidePots(state.players, sidePots, winnerIds, {
+          chop: true,
+          dealerIndex: state.dealerIndex,
+        })
+      : (() => {
+          const fallback = new Map<string, number>();
+          const count = winnerIndices.length;
+          const share = Math.floor(pot / count);
+          const remainder = pot % count;
+          const ordered = sortBySeatFromDealer(state, winnerIndices);
 
-  for (const [idx, amt] of amounts) {
-    state.players[idx].stack += amt;
-  }
+          for (const idx of ordered) {
+            fallback.set(state.players[idx].id, share);
+          }
+          for (let i = 0; i < remainder; i++) {
+            const id = state.players[ordered[i]].id;
+            fallback.set(id, (fallback.get(id) ?? 0) + 1);
+          }
+          return fallback;
+        })();
 
-  const names = ordered.map((i) => state.players[i].name).join(" と ");
-  const allEqual = ordered.every((i) => amounts.get(i) === share);
-  const detail = allEqual
-    ? `（各 ${share}）`
-    : `（${ordered.map((i) => `${state.players[i].name}: ${amounts.get(i)}`).join(", ")}）`;
-  pushHistory(
-    state,
-    `${names} がポット ${pot} をチョップ${detail}${reason ? `（${reason}）` : ""}`,
-  );
-  state.pot = 0;
-  endHandCleanup(state);
+  const names = sortBySeatFromDealer(state, winnerIndices)
+    .map((i) => state.players[i].name)
+    .join(" と ");
+  const suffix = reason ? `（${reason}）` : "";
+  const summary =
+    sidePots.length > 0
+      ? formatPotAwards(state, awards, suffix)
+      : `${names} がポット ${pot} をチョップ${suffix}`;
+
+  applyPotAwards(state, awards, summary);
 }
 
 function maybeSingleWinner(state: PokerState): ApplyResult | null {
@@ -235,7 +357,10 @@ function advanceStreet(state: PokerState): PokerState {
   state.round = nextRound;
 
   if (nextRound === "Showdown") {
-    pushHistory(state, "ショーダウン（実カードはテーブルで判定）");
+    if (state.board.length > 0) {
+      pushHistory(state, `ボード: ${state.board.join(" ")}`);
+    }
+    pushHistory(state, "ショーダウン");
     state.currentPlayerIndex = state.dealerIndex;
     state.handInProgress = false;
     return state;
@@ -251,7 +376,7 @@ function advanceStreet(state: PokerState): PokerState {
     Turn: "ターン",
     River: "リバー",
   };
-  pushHistory(state, `${labels[nextRound] ?? nextRound} 開始`);
+  pushHistory(state, `--- ${labels[nextRound] ?? nextRound} ---`);
 
   return state;
 }
@@ -339,10 +464,22 @@ export function startHand(state: PokerState): ApplyResult {
   s.lastAggressorIndex = bbSeat;
   s.actedThisStreet = s.players.map(() => false);
   s.handInProgress = true;
+  s.board = [];
 
   s.currentPlayerIndex = firstActorPreflop(s.players);
 
-  pushHistory(s, `ハンド開始（SB ${s.smallBlind} / BB ${s.bigBlind}）`);
+  const handNumber =
+    s.history.filter((h) => h.includes("ハンド開始")).length + 1;
+  const seats = s.players
+    .map((p) => {
+      const pos = p.position ? `${p.position} ` : "";
+      return `${pos}${p.name}(${p.stack + p.bet})`;
+    })
+    .join(" / ");
+  pushHistory(
+    s,
+    `#${handNumber} ハンド開始（SB ${s.smallBlind} / BB ${s.bigBlind}） ${seats}`,
+  );
 
   const folded = maybeSingleWinner(s);
   if (folded) return folded;

@@ -12,8 +12,11 @@ export type ClientToServerMessage =
       payload:
         | { kind: "action"; playerIndex: number; action: PokerAction }
         | { kind: "startHand" }
-        | { kind: "showdown"; winnerIndex: number }
-        | { kind: "chop"; winnerIndices: number[] }
+        | { kind: "showdown"; winnerIndex: number; cardsNote?: string }
+        | { kind: "chop"; winnerIndices: number[]; cardsNote?: string }
+        | { kind: "logBoard"; cardsText: string }
+        | { kind: "logShowdown"; note: string }
+        | { kind: "undo" }
         | { kind: "reset" };
     };
 
@@ -27,8 +30,11 @@ export type ServerToClientMessage =
       payload:
         | { kind: "action"; playerIndex: number; action: PokerAction }
         | { kind: "startHand" }
-        | { kind: "showdown"; winnerIndex: number }
-        | { kind: "chop"; winnerIndices: number[] }
+        | { kind: "showdown"; winnerIndex: number; cardsNote?: string }
+        | { kind: "chop"; winnerIndices: number[]; cardsNote?: string }
+        | { kind: "logBoard"; cardsText: string }
+        | { kind: "logShowdown"; note: string }
+        | { kind: "undo" }
         | { kind: "reset" };
     }
   | { type: "error"; message: string };

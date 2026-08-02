@@ -10,6 +10,12 @@ import { useGameStore } from "@/stores/game-store";
 export function BettingControls() {
   const poker = useGameStore((s) => s.poker);
   const submitAction = useGameStore((s) => s.submitAction);
+  const undoLastAction = useGameStore((s) => s.undoLastAction);
+  const canUndo = useGameStore(
+    (s) =>
+      s.undoStack.length > 0 ||
+      (s.realtimeConnected && s.realtimeRole === "guest"),
+  );
   const [raiseTo, setRaiseTo] = useState("");
   const [betAmt, setBetAmt] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +46,11 @@ export function BettingControls() {
     setError(err);
   };
 
+  const onUndo = () => {
+    const err = undoLastAction();
+    setError(err);
+  };
+
   const canCheck = validateAction(poker, idx, { type: "check" }) === null;
   const canCall = validateAction(poker, idx, { type: "call" }) === null;
   const betValue = Math.max(1, Number(betAmt) || poker.bigBlind);
@@ -56,11 +67,11 @@ export function BettingControls() {
 
   const quickBetButtons = [
     { label: "2x", value: poker.bigBlind * 2 },
-    { label: "2.5x", value: Math.round(poker.bigBlind * 2.5) },
     { label: "3x", value: poker.bigBlind * 3 },
+    { label: "4x", value: poker.bigBlind * 4 },
+    { label: "1/3", value: Math.round(poker.pot / 3) },
+    { label: "1/2", value: Math.round(poker.pot / 2) },
     { label: "Pot", value: poker.pot },
-    { label: "½ Pot", value: Math.round(poker.pot / 2) },
-    { label: "All-in", value: p?.stack ?? 0 },
   ].map((item) => ({
     ...item,
     value: Math.max(poker.bigBlind, Math.round(item.value)),
@@ -68,11 +79,11 @@ export function BettingControls() {
 
   const quickRaiseButtons = [
     { label: "2x", value: Math.round(currentBetBase * 2) },
-    { label: "2.5x", value: Math.round(currentBetBase * 2.5) },
     { label: "3x", value: Math.round(currentBetBase * 3) },
+    { label: "4x", value: Math.round(currentBetBase * 4) },
+    { label: "1/3", value: Math.round(poker.pot / 3) },
+    { label: "1/2", value: Math.round(poker.pot / 2) },
     { label: "Pot", value: poker.pot },
-    { label: "½ Pot", value: Math.round(poker.pot / 2) },
-    { label: "All-in", value: maxTotal },
   ].map((item) => ({
     ...item,
     value: Math.min(maxTotal, Math.max(0, item.value)),
@@ -91,6 +102,27 @@ export function BettingControls() {
   const isBetting = poker.currentBet === 0;
   const quickButtons = isBetting ? quickBetButtons : quickRaiseButtons;
 
+  const sideButtons = [
+    {
+      label: "125%",
+      value: isBetting
+        ? Math.max(poker.bigBlind, Math.round(poker.pot * 1.25))
+        : Math.min(maxTotal, Math.round(poker.pot * 1.25)),
+    },
+    {
+      label: "All-in",
+      value: isBetting ? maxBetAmount : maxTotal,
+    },
+  ];
+
+  const applyAmount = (value: number) => {
+    if (isBetting) {
+      applyQuickBet(value);
+    } else {
+      setRaiseTo(String(Math.min(maxTotal, Math.max(0, Math.round(value)))));
+    }
+  };
+
   const posLabel =
     p?.position === "D" &&
     poker.players.filter((pl) => pl.status !== "out").length === 2
@@ -101,24 +133,35 @@ export function BettingControls() {
     <section className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-3 pt-3 shadow-[0_-4px_20px_oklch(0_0_0/0.06)] backdrop-blur-xl">
       <div className="mx-auto max-w-lg space-y-3">
         {/* Current player info bar */}
-        <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-              番
-            </span>
-            <span className="ml-2 text-sm font-bold text-emerald-900">
-              {p?.name ?? "—"}
-            </span>
-            {posLabel && (
-              <span className="ml-1.5 text-[10px] font-semibold text-emerald-600">
-                ({posLabel})
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5">
+          <div className="min-w-0">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                番
               </span>
-            )}
+              <span className="ml-2 text-sm font-bold text-emerald-900">
+                {p?.name ?? "—"}
+              </span>
+              {posLabel && (
+                <span className="ml-1.5 text-[10px] font-semibold text-emerald-600">
+                  ({posLabel})
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] tabular-nums text-emerald-700">
+              スタック {p?.stack ?? 0} · Pot {poker.pot}
+              {toCall > 0 ? ` · toCall ${toCall}` : ""}
+            </p>
           </div>
-          <span className="text-[11px] tabular-nums text-emerald-700">
-            スタック {p?.stack ?? 0} · Pot {poker.pot}
-            {toCall > 0 ? ` · toCall ${toCall}` : ""}
-          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!canUndo}
+            onClick={onUndo}
+            className="h-8 shrink-0 rounded-lg border-border bg-background px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ひとつ戻る
+          </Button>
         </div>
 
         {/* Main action buttons */}
@@ -171,30 +214,38 @@ export function BettingControls() {
                 key={item.label}
                 type="button"
                 className="h-7 rounded-lg border border-border bg-muted/50 px-1 text-[10px] font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
-                onClick={() => {
-                  if (isBetting) {
-                    applyQuickBet(item.value);
-                  } else {
-                    setRaiseTo(String(item.value));
-                  }
-                }}
+                onClick={() => applyAmount(item.value)}
               >
                 {item.label}
               </Button>
             ))}
           </div>
 
-          {/* Number input */}
-          <Input
-            ref={isBetting ? betInputRef : undefined}
-            id="amount-input"
-            inputMode="numeric"
-            value={isBetting ? betAmt : raiseTo}
-            onChange={(e) =>
-              isBetting ? setBetAmt(e.target.value) : setRaiseTo(e.target.value)
-            }
-            className="h-10 text-center font-mono text-base font-semibold tabular-nums"
-          />
+          {/* Side quick fills + amount input */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex min-w-0 flex-1 gap-1.5">
+              {sideButtons.map((item) => (
+                <Button
+                  key={item.label}
+                  type="button"
+                  className="h-10 flex-1 rounded-lg border border-border bg-muted/50 px-1 text-xs font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+                  onClick={() => applyAmount(item.value)}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+            <Input
+              ref={isBetting ? betInputRef : undefined}
+              id="amount-input"
+              inputMode="numeric"
+              value={isBetting ? betAmt : raiseTo}
+              onChange={(e) =>
+                isBetting ? setBetAmt(e.target.value) : setRaiseTo(e.target.value)
+              }
+              className="h-10 w-1/3 shrink-0 text-center font-mono text-base font-semibold tabular-nums"
+            />
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}

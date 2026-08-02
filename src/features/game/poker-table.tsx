@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { BettingControls } from "@/features/betting/betting-controls";
 import { PlayerSetup } from "@/features/players/player-setup";
 import { GameLog } from "@/features/game/game-log";
+import { BoardCardLogger } from "@/features/game/board-card-logger";
 import { ShowdownPanel } from "@/features/game/showdown-panel";
 import { TurnIndicator } from "@/features/turn/turn-indicator";
 import { useHydrateGame } from "@/hooks/use-hydrate-game";
@@ -59,6 +60,12 @@ export function PokerTable() {
   const hydrated = useHydrateGame();
   const poker = useGameStore((s) => s.poker);
   const startNewHand = useGameStore((s) => s.startNewHand);
+  const undoLastAction = useGameStore((s) => s.undoLastAction);
+  const canUndo = useGameStore(
+    (s) =>
+      s.undoStack.length > 0 ||
+      (s.realtimeConnected && s.realtimeRole === "guest"),
+  );
   const connectRealtime = useGameStore((s) => s.connectRealtime);
   const disconnectRealtime = useGameStore((s) => s.disconnectRealtime);
   const realtimeConnected = useGameStore((s) => s.realtimeConnected);
@@ -150,19 +157,36 @@ export function PokerTable() {
         <div className="divider-gold" />
 
         {/* Hand Start button */}
-        <Button
-          type="button"
-          size="lg"
-          onClick={onStart}
-          disabled={poker.players.length < 2 || poker.handInProgress || showdownPending}
-          className="h-14 w-full rounded-xl text-base font-bold tracking-wide shadow-md disabled:opacity-40"
-        >
-          {showdownPending
-            ? "ショーダウン結果を先に確定"
-            : poker.handInProgress
-              ? "ハンド進行中…"
-              : "ハンド開始"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            size="lg"
+            onClick={onStart}
+            disabled={poker.players.length < 2 || poker.handInProgress || showdownPending}
+            className="h-14 min-w-0 flex-1 rounded-xl text-base font-bold tracking-wide shadow-md disabled:opacity-40"
+          >
+            {showdownPending
+              ? "ショーダウン結果を先に確定"
+              : poker.handInProgress
+                ? "ハンド進行中…"
+                : "ハンド開始"}
+          </Button>
+          {!bettingOpen && (
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              disabled={!canUndo}
+              onClick={() => {
+                const err = undoLastAction();
+                setHandErr(err);
+              }}
+              className="h-14 shrink-0 rounded-xl px-4 text-sm font-semibold disabled:opacity-40"
+            >
+              ひとつ戻る
+            </Button>
+          )}
+        </div>
         {handErr && (
           <p className="text-center text-sm text-red-500" role="alert">
             {handErr}
@@ -171,6 +195,9 @@ export function PokerTable() {
 
         {/* Showdown */}
         <ShowdownPanel />
+
+        {/* Board cards for AI log */}
+        <BoardCardLogger />
 
         {/* Log */}
         <section className="space-y-2">

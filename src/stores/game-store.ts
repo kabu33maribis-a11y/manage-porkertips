@@ -4,10 +4,15 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import {
   applyAction,
+  appendHistoryNote,
   createEmptyPokerState,
   distributePotAndEndHand,
   distributePotChopAndEndHand,
   ensureDerivedArrays,
+  popUndoSnapshot,
+  pushUndoSnapshot,
+  recordBoardCards,
+  recordShowdownCards,
   startHand,
 } from "@/lib/poker";
 import { loadGameSnapshot, saveGameSnapshot } from "@/lib/storage/game-db";
@@ -32,6 +37,7 @@ const queuePersist = debounce((state: PokerState) => {
 
 interface GameStore {
   poker: PokerState;
+  undoStack: PokerState[];
   hydrated: boolean;
   initialStack: number;
   realtimeConnected: boolean;
@@ -53,9 +59,26 @@ interface GameStore {
   removePlayer: (id: string) => void;
   startNewHand: () => string | null;
   submitAction: (playerIndex: number, action: PokerAction) => string | null;
-  showdownWinner: (winnerIndex: number) => string | null;
-  showdownChop: (winnerIndices: number[]) => string | null;
+  logBoardCards: (cardsText: string) => string | null;
+  logShowdownCards: (note: string) => string | null;
+  logNote: (note: string) => string | null;
+  showdownWinner: (winnerIndex: number, cardsNote?: string) => string | null;
+  showdownChop: (winnerIndices: number[], cardsNote?: string) => string | null;
+  undoLastAction: () => string | null;
   resetSession: () => void;
+}
+
+function broadcastHostState(get: () => GameStore) {
+  const nextState = get();
+  if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
+    const msg: ClientToServerMessage = {
+      type: "state_push",
+      roomCode: nextState.realtimeRoomCode,
+      state: nextState.poker,
+      senderId: nextState.clientId,
+    };
+    ws.send(JSON.stringify(msg));
+  }
 }
 
 let ws: WebSocket | null = null;
@@ -69,8 +92,23 @@ function makeClientId(): string {
 }
 
 export const useGameStore = create<GameStore>()(
-  immer((set, get) => ({
+  immer((set, get) => {
+    const commitPoker = (next: PokerState, recordUndo: boolean) => {
+      const prev = get().poker;
+      const prevStack = get().undoStack;
+      set((draft) => {
+        if (recordUndo) {
+          draft.undoStack = pushUndoSnapshot(prevStack, prev);
+        }
+        draft.poker = next;
+      });
+      queuePersist(get().poker);
+      broadcastHostState(get);
+    };
+
+    return {
     poker: createEmptyPokerState(10, 20),
+    undoStack: [],
     hydrated: false,
     initialStack: 1000,
     realtimeConnected: false,
@@ -86,6 +124,7 @@ export const useGameStore = create<GameStore>()(
         ensureDerivedArrays(loaded);
         set((draft) => {
           draft.poker = loaded;
+          draft.undoStack = [];
           draft.hydrated = true;
         });
       } else {
@@ -184,6 +223,7 @@ export const useGameStore = create<GameStore>()(
             ensureDerivedArrays(raw.state);
             set((draft) => {
               draft.poker = raw.state;
+              draft.undoStack = [];
             });
             queuePersist(get().poker);
             return;
@@ -197,9 +237,15 @@ export const useGameStore = create<GameStore>()(
             } else if (payload.kind === "startHand") {
               void get().startNewHand();
             } else if (payload.kind === "showdown") {
-              void get().showdownWinner(payload.winnerIndex);
+              void get().showdownWinner(payload.winnerIndex, payload.cardsNote);
             } else if (payload.kind === "chop") {
-              void get().showdownChop(payload.winnerIndices);
+              void get().showdownChop(payload.winnerIndices, payload.cardsNote);
+            } else if (payload.kind === "logBoard") {
+              void get().logBoardCards(payload.cardsText);
+            } else if (payload.kind === "logShowdown") {
+              void get().logShowdownCards(payload.note);
+            } else if (payload.kind === "undo") {
+              void get().undoLastAction();
             } else if (payload.kind === "reset") {
               void get().resetSession();
             }
@@ -235,16 +281,7 @@ export const useGameStore = create<GameStore>()(
         draft.poker.minRaise = bb;
       });
       queuePersist(get().poker);
-      const state = get();
-      if (state.realtimeConnected && state.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: state.realtimeRoomCode,
-          state: state.poker,
-          senderId: state.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      broadcastHostState(get);
     },
 
     setInitialStack: (n) => {
@@ -281,16 +318,7 @@ export const useGameStore = create<GameStore>()(
         draft.poker.actedThisStreet = draft.poker.players.map(() => false);
       });
       queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      broadcastHostState(get);
     },
 
     removePlayer: (id) => {
@@ -318,16 +346,7 @@ export const useGameStore = create<GameStore>()(
         draft.poker.actedThisStreet = draft.poker.players.map(() => false);
       });
       queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      broadcastHostState(get);
     },
 
     startNewHand: () => {
@@ -349,20 +368,7 @@ export const useGameStore = create<GameStore>()(
       }
       const res = startHand(get().poker);
       if (!res.ok) return res.error;
-      set((draft) => {
-        draft.poker = res.state;
-      });
-      queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      commitPoker(res.state, true);
       return null;
     },
 
@@ -385,24 +391,11 @@ export const useGameStore = create<GameStore>()(
       }
       const res = applyAction(get().poker, playerIndex, action);
       if (!res.ok) return res.error;
-      set((draft) => {
-        draft.poker = res.state;
-      });
-      queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      commitPoker(res.state, true);
       return null;
     },
 
-    showdownWinner: (winnerIndex) => {
+    logBoardCards: (cardsText) => {
       const state = get();
       if (
         state.realtimeConnected &&
@@ -414,32 +407,18 @@ export const useGameStore = create<GameStore>()(
           type: "request",
           roomCode: state.realtimeRoomCode,
           senderId: state.clientId,
-          payload: { kind: "showdown", winnerIndex },
+          payload: { kind: "logBoard", cardsText },
         };
         ws.send(JSON.stringify(req));
         return null;
       }
-      const res = distributePotAndEndHand(get().poker, winnerIndex);
+      const res = recordBoardCards(get().poker, cardsText);
       if (!res.ok) return res.error;
-      const autoStart = startHand(res.state);
-      set((draft) => {
-        draft.poker = autoStart.ok ? autoStart.state : res.state;
-      });
-      queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      commitPoker(res.state, true);
       return null;
     },
 
-    showdownChop: (winnerIndices) => {
+    logShowdownCards: (note) => {
       const state = get();
       if (
         state.realtimeConnected &&
@@ -451,28 +430,109 @@ export const useGameStore = create<GameStore>()(
           type: "request",
           roomCode: state.realtimeRoomCode,
           senderId: state.clientId,
-          payload: { kind: "chop", winnerIndices },
+          payload: { kind: "logShowdown", note },
         };
         ws.send(JSON.stringify(req));
         return null;
       }
-      const res = distributePotChopAndEndHand(get().poker, winnerIndices);
+      const res = recordShowdownCards(get().poker, note);
+      if (!res.ok) return res.error;
+      commitPoker(res.state, true);
+      return null;
+    },
+
+    logNote: (note) => {
+      const res = appendHistoryNote(get().poker, note);
+      if (!res.ok) return res.error;
+      commitPoker(res.state, true);
+      return null;
+    },
+
+    showdownWinner: (winnerIndex, cardsNote) => {
+      const state = get();
+      if (
+        state.realtimeConnected &&
+        state.realtimeRole === "guest" &&
+        ws &&
+        !forwardingRequest
+      ) {
+        const req: ClientToServerMessage = {
+          type: "request",
+          roomCode: state.realtimeRoomCode,
+          senderId: state.clientId,
+          payload: { kind: "showdown", winnerIndex, cardsNote },
+        };
+        ws.send(JSON.stringify(req));
+        return null;
+      }
+      let poker = get().poker;
+      if (cardsNote?.trim()) {
+        const logged = recordShowdownCards(poker, cardsNote);
+        if (!logged.ok) return logged.error;
+        poker = logged.state;
+      }
+      const res = distributePotAndEndHand(poker, winnerIndex);
       if (!res.ok) return res.error;
       const autoStart = startHand(res.state);
+      commitPoker(autoStart.ok ? autoStart.state : res.state, true);
+      return null;
+    },
+
+    showdownChop: (winnerIndices, cardsNote) => {
+      const state = get();
+      if (
+        state.realtimeConnected &&
+        state.realtimeRole === "guest" &&
+        ws &&
+        !forwardingRequest
+      ) {
+        const req: ClientToServerMessage = {
+          type: "request",
+          roomCode: state.realtimeRoomCode,
+          senderId: state.clientId,
+          payload: { kind: "chop", winnerIndices, cardsNote },
+        };
+        ws.send(JSON.stringify(req));
+        return null;
+      }
+      let poker = get().poker;
+      if (cardsNote?.trim()) {
+        const logged = recordShowdownCards(poker, cardsNote);
+        if (!logged.ok) return logged.error;
+        poker = logged.state;
+      }
+      const res = distributePotChopAndEndHand(poker, winnerIndices);
+      if (!res.ok) return res.error;
+      const autoStart = startHand(res.state);
+      commitPoker(autoStart.ok ? autoStart.state : res.state, true);
+      return null;
+    },
+
+    undoLastAction: () => {
+      const state = get();
+      if (
+        state.realtimeConnected &&
+        state.realtimeRole === "guest" &&
+        ws &&
+        !forwardingRequest
+      ) {
+        const req: ClientToServerMessage = {
+          type: "request",
+          roomCode: state.realtimeRoomCode,
+          senderId: state.clientId,
+          payload: { kind: "undo" },
+        };
+        ws.send(JSON.stringify(req));
+        return null;
+      }
+      const popped = popUndoSnapshot(get().undoStack);
+      if (!popped) return "戻せる操作がありません";
       set((draft) => {
-        draft.poker = autoStart.ok ? autoStart.state : res.state;
+        draft.undoStack = popped.stack;
+        draft.poker = popped.state;
       });
       queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      broadcastHostState(get);
       return null;
     },
 
@@ -496,18 +556,11 @@ export const useGameStore = create<GameStore>()(
       const { smallBlind, bigBlind } = get().poker;
       set((draft) => {
         draft.poker = createEmptyPokerState(smallBlind, bigBlind);
+        draft.undoStack = [];
       });
       queuePersist(get().poker);
-      const nextState = get();
-      if (nextState.realtimeConnected && nextState.realtimeRole === "host" && ws) {
-        const msg: ClientToServerMessage = {
-          type: "state_push",
-          roomCode: nextState.realtimeRoomCode,
-          state: nextState.poker,
-          senderId: nextState.clientId,
-        };
-        ws.send(JSON.stringify(msg));
-      }
+      broadcastHostState(get);
     },
-  })),
+  };
+  }),
 );

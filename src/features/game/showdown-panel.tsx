@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { inCurrentHand } from "@/lib/poker";
 import { useGameStore } from "@/stores/game-store";
 
@@ -20,10 +21,25 @@ export function ShowdownPanel() {
   const showdownWinner = useGameStore((s) => s.showdownWinner);
   const showdownChop = useGameStore((s) => s.showdownChop);
   const [selected, setSelected] = useState<number[]>([]);
+  const [holeNotes, setHoleNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const pending = poker.round === "Showdown" && poker.pot > 0;
   if (!pending) return null;
+
+  const contenders = poker.players
+    .map((pl, i) => ({ pl, i }))
+    .filter(({ pl }) => inCurrentHand(pl));
+
+  const buildShowdownNote = () => {
+    const parts = contenders
+      .map(({ pl }) => {
+        const cards = (holeNotes[pl.id] ?? "").trim();
+        return cards ? `${pl.name}: ${cards}` : null;
+      })
+      .filter(Boolean);
+    return parts.join(" / ");
+  };
 
   const toggle = (index: number) => {
     setError(null);
@@ -36,23 +52,25 @@ export function ShowdownPanel() {
 
   const confirmWinner = () => {
     if (selected.length !== 1) return;
-    const err = showdownWinner(selected[0]);
+    const err = showdownWinner(selected[0], buildShowdownNote() || undefined);
     if (err) {
       setError(err);
       return;
     }
     setSelected([]);
+    setHoleNotes({});
     setError(null);
   };
 
   const confirmChop = () => {
     if (selected.length < 2) return;
-    const err = showdownChop(selected);
+    const err = showdownChop(selected, buildShowdownNote() || undefined);
     if (err) {
       setError(err);
       return;
     }
     setSelected([]);
+    setHoleNotes({});
     setError(null);
   };
 
@@ -63,9 +81,33 @@ export function ShowdownPanel() {
           ショーダウン — 勝者を選択
         </p>
         <p className="mt-0.5 text-[11px] text-amber-700/70">
-          ポット {poker.pot} · 実カードで確認してタップ（複数選択でチョップ）
+          ポット {poker.pot}
+          {poker.board.length > 0 ? ` · ボード ${poker.board.join(" ")}` : ""}
+          · ホールカードを任意記録（AI用）
         </p>
       </div>
+
+      <div className="space-y-2 rounded-xl border border-amber-200 bg-white/70 p-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800/80">
+          公開ハンド（任意）
+        </p>
+        {contenders.map(({ pl }) => (
+          <div key={pl.id} className="flex items-center gap-2">
+            <span className="w-20 shrink-0 truncate text-[11px] font-medium text-foreground">
+              {pl.name}
+            </span>
+            <Input
+              value={holeNotes[pl.id] ?? ""}
+              onChange={(e) =>
+                setHoleNotes((prev) => ({ ...prev, [pl.id]: e.target.value }))
+              }
+              placeholder="例: Ah Kd"
+              className="h-8 text-sm"
+            />
+          </div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         {poker.players.map((pl, i) => {
           const active = inCurrentHand(pl);

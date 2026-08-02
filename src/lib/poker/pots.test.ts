@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Player } from "@/types/poker";
-import { computeSidePots } from "./pots";
+import { computeSidePots, distributeSidePots } from "./pots";
 
 function p(id: string, totalContributed: number): Player {
   return {
@@ -29,5 +29,19 @@ describe("computeSidePots", () => {
     expect(pots[1].eligiblePlayerIds.sort()).toEqual(["b", "c"].sort());
     expect(pots[2].amount).toBe(200);
     expect(pots[2].eligiblePlayerIds).toEqual(["c"]);
+  });
+
+  it("returns excess chips to deep stack when short stack wins", () => {
+    const players: Player[] = [
+      p("short", 100),
+      p("deep", 500),
+    ];
+    const pots = computeSidePots(players);
+    const awards = distributeSidePots(players, pots, ["short"], {
+      chop: false,
+      dealerIndex: 1,
+    });
+    expect(awards.get("short")).toBe(200);
+    expect(awards.get("deep")).toBe(400);
   });
 });

@@ -123,6 +123,7 @@ export function cloneStateBase(state: PokerState): PokerState {
     ...state,
     players: state.players.map((p) => ({ ...p })),
     history: [...state.history],
+    board: [...(state.board ?? [])],
     actedThisStreet: [...state.actedThisStreet],
   };
 }
