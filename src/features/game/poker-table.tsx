@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { BettingControls } from "@/features/betting/betting-controls";
 import { PlayerSetup } from "@/features/players/player-setup";
 import { GameLog } from "@/features/game/game-log";
@@ -61,27 +60,8 @@ export function PokerTable() {
   const poker = useGameStore((s) => s.poker);
   const startNewHand = useGameStore((s) => s.startNewHand);
   const undoLastAction = useGameStore((s) => s.undoLastAction);
-  const canUndo = useGameStore(
-    (s) =>
-      s.undoStack.length > 0 ||
-      (s.realtimeConnected && s.realtimeRole === "guest"),
-  );
-  const connectRealtime = useGameStore((s) => s.connectRealtime);
-  const disconnectRealtime = useGameStore((s) => s.disconnectRealtime);
-  const realtimeConnected = useGameStore((s) => s.realtimeConnected);
-  const realtimeRole = useGameStore((s) => s.realtimeRole);
-  const realtimeError = useGameStore((s) => s.realtimeError);
-  const realtimeRoomCode = useGameStore((s) => s.realtimeRoomCode);
+  const canUndo = useGameStore((s) => s.undoStack.length > 0);
   const [handErr, setHandErr] = useState<string | null>(null);
-  const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [wsUrlInput, setWsUrlInput] = useState("ws://localhost:8787");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const host = window.location.hostname || "localhost";
-    setWsUrlInput(`${protocol}://${host}:8787`);
-  }, []);
 
   if (!hydrated) {
     return <TableSkeleton />;
@@ -203,68 +183,6 @@ export function PokerTable() {
 
         {/* Board cards for AI log */}
         <BoardCardLogger />
-
-        {/* Realtime */}
-        <section className="space-y-3">
-          <SectionLabel>リアルタイム共有</SectionLabel>
-          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-            <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
-              <Input
-                value={wsUrlInput}
-                onChange={(e) => setWsUrlInput(e.target.value)}
-                placeholder="ws://localhost:8787"
-                className="h-9 text-sm"
-              />
-              <Input
-                value={roomCodeInput}
-                onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
-                placeholder="ROOM001"
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                onClick={() =>
-                  connectRealtime({ url: wsUrlInput, roomCode: roomCodeInput, role: "host" })
-                }
-              >
-                Host
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8"
-                onClick={() =>
-                  connectRealtime({ url: wsUrlInput, roomCode: roomCodeInput, role: "guest" })
-                }
-              >
-                Guest
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 text-muted-foreground"
-                onClick={disconnectRealtime}
-              >
-                切断
-              </Button>
-              <span className="text-[11px] text-muted-foreground">
-                {realtimeConnected
-                  ? `✦ 接続中 (${realtimeRole}) · ${realtimeRoomCode}`
-                  : "未接続"}
-              </span>
-            </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
-              別端末から接続する場合はホストPCのIPアドレスを指定
-            </p>
-            {realtimeError && (
-              <p className="mt-1 text-xs text-red-500">{realtimeError}</p>
-            )}
-          </div>
-        </section>
       </motion.div>
 
       <BettingControls />

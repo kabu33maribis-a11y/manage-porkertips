@@ -11,11 +11,7 @@ export function BettingControls() {
   const poker = useGameStore((s) => s.poker);
   const submitAction = useGameStore((s) => s.submitAction);
   const undoLastAction = useGameStore((s) => s.undoLastAction);
-  const canUndo = useGameStore(
-    (s) =>
-      s.undoStack.length > 0 ||
-      (s.realtimeConnected && s.realtimeRole === "guest"),
-  );
+  const canUndo = useGameStore((s) => s.undoStack.length > 0);
   const [raiseTo, setRaiseTo] = useState("");
   const [betAmt, setBetAmt] = useState("");
   const [error, setError] = useState<string | null>(null);
