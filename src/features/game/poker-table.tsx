@@ -9,7 +9,6 @@ import { PlayerSetup } from "@/features/players/player-setup";
 import { GameLog } from "@/features/game/game-log";
 import { BoardCardLogger } from "@/features/game/board-card-logger";
 import { ShowdownPanel } from "@/features/game/showdown-panel";
-import { TurnIndicator } from "@/features/turn/turn-indicator";
 import { useHydrateGame } from "@/hooks/use-hydrate-game";
 import { useGameStore } from "@/stores/game-store";
 
@@ -148,11 +147,6 @@ export function PokerTable() {
         layout
         className={`mx-auto max-w-lg space-y-5 px-4 pt-5 ${bettingOpen ? "pb-56" : "pb-10"} safe-bottom`}
       >
-        {/* Turn indicator */}
-        {poker.handInProgress && poker.round !== "Showdown" && (
-          <TurnIndicator />
-        )}
-
         {/* Players + Setup */}
         <section className="space-y-3">
           <SectionLabel>テーブル</SectionLabel>
