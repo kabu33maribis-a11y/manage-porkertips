@@ -130,10 +130,10 @@ export function BettingControls() {
       : p?.position;
 
   return (
-    <section className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 pb-3 pt-3 shadow-[0_-4px_20px_oklch(0_0_0/0.06)] backdrop-blur-xl">
-      <div className="mx-auto max-w-lg space-y-3">
+    <section className="shrink-0 border-t border-border bg-background/95 px-3 pt-2 pb-2">
+      <div className="mx-auto max-w-lg space-y-2">
         {/* Current player info bar */}
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1">
           <div className="min-w-0">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
@@ -148,7 +148,7 @@ export function BettingControls() {
                 </span>
               )}
             </div>
-            <p className="text-[11px] tabular-nums text-emerald-700">
+            <p className="text-[10px] tabular-nums text-emerald-700">
               スタック {p?.stack ?? 0} · Pot {poker.pot}
               {toCall > 0 ? ` · toCall ${toCall}` : ""}
             </p>
@@ -158,24 +158,24 @@ export function BettingControls() {
             variant="outline"
             disabled={!canUndo}
             onClick={onUndo}
-            className="h-8 shrink-0 rounded-lg border-border bg-background px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-muted disabled:opacity-40"
+            className="h-7 shrink-0 rounded-lg border-border bg-background px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted disabled:opacity-40"
           >
             ひとつ戻る
           </Button>
         </div>
 
         {/* Main action buttons */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           <Button
             type="button"
-            className="h-12 rounded-xl border border-red-300 bg-red-50 text-sm font-semibold text-red-600 hover:bg-red-100"
+            className="h-10 rounded-xl border border-red-300 bg-red-50 text-sm font-semibold text-red-600 hover:bg-red-100"
             onClick={() => run({ type: "fold" })}
           >
             Fold
           </Button>
           <Button
             type="button"
-            className={`h-12 rounded-xl text-sm font-semibold ${
+            className={`h-10 rounded-xl text-sm font-semibold ${
               canCheck
                 ? "border border-border bg-muted text-foreground hover:bg-muted/80"
                 : "border border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
@@ -187,7 +187,7 @@ export function BettingControls() {
           </Button>
           <Button
             type="button"
-            className="h-12 rounded-xl border border-amber-400 bg-amber-50 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-40"
+            className="h-10 rounded-xl border border-amber-400 bg-amber-50 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-40"
             disabled={isBetting ? !canBet : !canRaise}
             onClick={() =>
               isBetting
@@ -200,20 +200,17 @@ export function BettingControls() {
         </div>
 
         {/* Amount input + quick buttons */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="amount-input" className="text-[10px] text-muted-foreground">
-              {isBetting ? "ベット額" : `レイズ合計（最低 ${minTotal}）`}
-            </Label>
-          </div>
+        <div className="space-y-1">
+          <Label htmlFor="amount-input" className="text-[10px] text-muted-foreground">
+            {isBetting ? "ベット額" : `レイズ合計（最低 ${minTotal}）`}
+          </Label>
 
-          {/* Quick buttons */}
           <div className="grid grid-cols-6 gap-1">
             {quickButtons.map((item) => (
               <Button
                 key={item.label}
                 type="button"
-                className="h-7 rounded-lg border border-border bg-muted/50 px-1 text-[10px] font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+                className="h-6 rounded-lg border border-border bg-muted/50 px-1 text-[10px] font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
                 onClick={() => applyAmount(item.value)}
               >
                 {item.label}
@@ -221,14 +218,13 @@ export function BettingControls() {
             ))}
           </div>
 
-          {/* Side quick fills + amount input */}
           <div className="flex items-center gap-1.5">
             <div className="flex min-w-0 flex-1 gap-1.5">
               {sideButtons.map((item) => (
                 <Button
                   key={item.label}
                   type="button"
-                  className="h-10 flex-1 rounded-lg border border-border bg-muted/50 px-1 text-xs font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+                  className="h-9 flex-1 rounded-lg border border-border bg-muted/50 px-1 text-xs font-medium tabular-nums text-muted-foreground hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
                   onClick={() => applyAmount(item.value)}
                 >
                   {item.label}
@@ -243,7 +239,7 @@ export function BettingControls() {
               onChange={(e) =>
                 isBetting ? setBetAmt(e.target.value) : setRaiseTo(e.target.value)
               }
-              className="h-10 w-1/3 shrink-0 text-center font-mono text-base font-semibold tabular-nums"
+              className="h-9 w-1/3 shrink-0 text-center font-mono text-base font-semibold tabular-nums"
             />
           </div>
         </div>
