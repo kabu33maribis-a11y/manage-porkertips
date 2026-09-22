@@ -130,10 +130,15 @@ export function PokerTable() {
             })}
           </div>
 
-          {/* Pot / MinRaise */}
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label="ポット" value={poker.pot} gold />
-            <Stat label="最小レイズ" value={poker.minRaise} />
+          {/* Pot / MinRaise + log */}
+          <div className="flex items-stretch gap-2">
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+              <Stat label="ポット" value={poker.pot} gold />
+              <Stat label="最小レイズ" value={poker.minRaise} />
+            </div>
+            <div className="flex items-center">
+              <GameLog />
+            </div>
           </div>
         </div>
       </header>
@@ -198,12 +203,6 @@ export function PokerTable() {
 
         {/* Board cards for AI log */}
         <BoardCardLogger />
-
-        {/* Log */}
-        <section className="space-y-2">
-          <SectionLabel>ゲームログ</SectionLabel>
-          <GameLog />
-        </section>
 
         {/* Realtime */}
         <section className="space-y-3">
