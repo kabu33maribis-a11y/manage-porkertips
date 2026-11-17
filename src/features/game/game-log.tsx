@@ -30,7 +30,7 @@ function lineClassName(line: string) {
     return "font-medium text-foreground";
   }
   if (line.startsWith("---")) {
-    return "pt-1 text-[10px] font-semibold tracking-wide text-amber-700";
+    return "pt-1 text-[10px] font-semibold tracking-wide text-orange-ink";
   }
   return "text-muted-foreground";
 }
@@ -60,14 +60,14 @@ export function GameLog() {
             type="button"
             size="icon"
             variant="outline"
-            className="relative h-full min-h-14 w-11 shrink-0 rounded-xl border-border bg-card shadow-sm"
+            className="relative h-full min-h-14 w-11 shrink-0 rounded-xl border-border bg-card/70"
             aria-label="ゲームログを開く"
           />
         }
       >
         <ScrollTextIcon className="size-5" />
         {groups.length > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[9px] font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-0.5 text-[9px] font-bold text-white">
             {groups.length > 99 ? "99+" : groups.length}
           </span>
         )}

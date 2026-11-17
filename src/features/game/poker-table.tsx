@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { BettingControls } from "@/features/betting/betting-controls";
 import { PlayerSetup } from "@/features/players/player-setup";
 import { GameLog } from "@/features/game/game-log";
-import { BoardCardLogger } from "@/features/game/board-card-logger";
 import { ShowdownPanel } from "@/features/game/showdown-panel";
 import { useHydrateGame } from "@/hooks/use-hydrate-game";
+import { findLastPlayerAction } from "@/lib/poker";
 import { useGameStore } from "@/stores/game-store";
 
 const STREETS = ["Pre-flop", "Flop", "Turn", "River", "Showdown"] as const;
@@ -26,10 +25,10 @@ function Stat({
 }) {
   return (
     <div
-      className={`rounded-xl border ${compact ? "px-2.5 py-1.5" : "px-3 py-2.5"} ${
+      className={`rounded-2xl border ${compact ? "px-2.5 py-1.5" : "px-3 py-2.5"} ${
         gold
-          ? "border-amber-400 bg-amber-50 shadow-sm"
-          : "border-border bg-card"
+          ? "border-orange/60 bg-orange/10 shadow-sm"
+          : "border-border bg-card shadow-sm"
       }`}
     >
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -39,12 +38,58 @@ function Stat({
         className={`font-semibold tabular-nums tracking-tight ${
           gold
             ? compact
-              ? "text-base text-amber-700"
-              : "text-lg text-amber-700"
+              ? "text-base text-orange-ink"
+              : "text-lg text-orange-ink"
             : "text-sm text-foreground"
         }`}
       >
         {value}
+      </p>
+    </div>
+  );
+}
+
+/** 元のポット + 今のBET分 = 合計 を横幅いっぱいに表示 */
+function PotStat({ pot, bets, compact }: { pot: number; bets: number; compact?: boolean }) {
+  const base = Math.max(0, pot - bets);
+  return (
+    <div
+      className={`flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-orange/60 bg-orange/10 shadow-sm ${
+        compact ? "px-3 py-1.5" : "px-4 py-2.5"
+      }`}
+    >
+      <div className="min-w-0">
+        <p className="text-[10px] font-medium text-muted-foreground">ポット</p>
+        <p className="text-sm font-semibold tabular-nums text-foreground/80">
+          {base} <span className="text-muted-foreground">+</span>{" "}
+          <span className="text-royal">{bets}</span>
+        </p>
+      </div>
+      <p className="text-3xl font-extrabold leading-none tabular-nums text-orange-ink">
+        {pot}
+      </p>
+    </div>
+  );
+}
+
+/** ゲーム中、画面中央にテーブルのように表示するポット */
+function CenterPot({ pot, bets }: { pot: number; bets: number }) {
+  const base = Math.max(0, pot - bets);
+  return (
+    <div
+      className="flex w-full max-w-[18rem] flex-col items-center justify-center rounded-full border border-orange/50 bg-gradient-to-b from-orange/15 to-orange/5 px-8 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_10px_24px_-14px_rgba(176,77,0,0.55)]"
+      aria-label={`ポット ${pot}`}
+    >
+      <p className="text-[10px] font-bold tracking-[0.35em] text-orange-ink/70">POT</p>
+      <p className="font-mono text-4xl font-extrabold leading-tight tabular-nums tracking-tight text-orange-ink">
+        {pot.toLocaleString("en-US")}
+      </p>
+      <p
+        className={`text-[11px] tabular-nums text-muted-foreground ${bets > 0 ? "" : "invisible"}`}
+      >
+        {base.toLocaleString("en-US")} ＋{" "}
+        <span className="font-semibold text-royal">{bets.toLocaleString("en-US")}</span>
+        <span className="ml-1 text-[10px]">（このラウンド）</span>
       </p>
     </div>
   );
@@ -62,34 +107,50 @@ function TableSkeleton() {
 
 function StreetProgress({ currentStreetIndex }: { currentStreetIndex: number }) {
   return (
-    <div className="flex items-center gap-1">
+    <ol className="flex items-start" aria-label="ストリート進行">
       {STREETS.map((street, index) => {
         const isCurrent = index === currentStreetIndex;
         const isDone = index < currentStreetIndex;
         return (
-          <div key={street} className="flex min-w-0 flex-1 items-center gap-1">
-            <div
-              className={`flex h-6 min-w-0 flex-1 items-center justify-center rounded px-1.5 text-[9px] font-semibold tracking-wide transition-all ${
-                isCurrent
-                  ? "bg-amber-100 text-amber-700 ring-1 ring-amber-400"
-                  : isDone
-                    ? "bg-muted text-muted-foreground line-through"
-                    : "bg-muted/50 text-muted-foreground/60"
-              }`}
-            >
-              {street}
-            </div>
-            {index < STREETS.length - 1 && (
-              <div
-                className={`h-px w-1.5 shrink-0 ${
-                  isDone ? "bg-amber-400" : "bg-border"
+          <li
+            key={street}
+            aria-current={isCurrent ? "step" : undefined}
+            className="relative flex min-w-0 flex-1 flex-col items-center gap-1"
+          >
+            {/* 前のノードとつなぐ線 */}
+            {index > 0 && (
+              <span
+                className={`absolute top-[9px] right-1/2 h-0.5 w-full -translate-y-1/2 transition-colors ${
+                  index <= currentStreetIndex ? "bg-royal" : "bg-border"
                 }`}
               />
             )}
-          </div>
+            <span
+              className={`relative z-10 flex size-[18px] items-center justify-center rounded-full text-[10px] font-bold transition-all ${
+                isCurrent
+                  ? "bg-royal text-white shadow-[0_0_0_4px] shadow-royal/20"
+                  : isDone
+                    ? "bg-royal text-white"
+                    : "border-2 border-border bg-card text-transparent"
+              }`}
+            >
+              {isDone ? "✓" : isCurrent ? index + 1 : "·"}
+            </span>
+            <span
+              className={`max-w-full truncate text-[10px] leading-none tracking-wide ${
+                isCurrent
+                  ? "font-bold text-royal"
+                  : isDone
+                    ? "font-medium text-foreground/70"
+                    : "font-medium text-muted-foreground/60"
+              }`}
+            >
+              {street}
+            </span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
@@ -98,27 +159,8 @@ export function PokerTable() {
   const poker = useGameStore((s) => s.poker);
   const startNewHand = useGameStore((s) => s.startNewHand);
   const undoLastAction = useGameStore((s) => s.undoLastAction);
-  const canUndo = useGameStore(
-    (s) =>
-      s.undoStack.length > 0 ||
-      (s.realtimeConnected && s.realtimeRole === "guest"),
-  );
-  const connectRealtime = useGameStore((s) => s.connectRealtime);
-  const disconnectRealtime = useGameStore((s) => s.disconnectRealtime);
-  const realtimeConnected = useGameStore((s) => s.realtimeConnected);
-  const realtimeRole = useGameStore((s) => s.realtimeRole);
-  const realtimeError = useGameStore((s) => s.realtimeError);
-  const realtimeRoomCode = useGameStore((s) => s.realtimeRoomCode);
+  const canUndo = useGameStore((s) => s.undoStack.length > 0);
   const [handErr, setHandErr] = useState<string | null>(null);
-  const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [wsUrlInput, setWsUrlInput] = useState("ws://localhost:8787");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const host = window.location.hostname || "localhost";
-    setWsUrlInput(`${protocol}://${host}:8787`);
-  }, []);
 
   if (!hydrated) {
     return <TableSkeleton />;
@@ -131,18 +173,24 @@ export function PokerTable() {
     setHandErr(err);
   };
   const currentStreetIndex = Math.max(0, STREETS.indexOf(poker.round));
+  const betsTotal = poker.players.reduce((sum, p) => sum + p.bet, 0);
+  const lastAction = findLastPlayerAction(poker.history);
 
   /* ── In-hand: single viewport, no sticky/fixed chrome ── */
   if (inHand) {
     return (
       <div className="safe-top safe-bottom flex h-dvh flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-border bg-background/90">
+        <header className="shrink-0 border-b border-border bg-background/80 backdrop-blur">
           <div className="mx-auto flex max-w-lg flex-col gap-2 px-3 py-2">
             <StreetProgress currentStreetIndex={currentStreetIndex} />
             <div className="flex items-stretch gap-2">
-              <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
-                <Stat label="ポット" value={poker.pot} gold compact />
-                <Stat label="最小レイズ" value={poker.minRaise} compact />
+              <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card px-2.5 py-1.5 shadow-sm">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  直前のアクション
+                </p>
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {lastAction ?? "—"}
+                </p>
               </div>
               <div className="flex items-center">
                 <GameLog />
@@ -152,15 +200,21 @@ export function PokerTable() {
         </header>
 
         <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-2 overflow-hidden px-3 py-2">
+          {!showdownPending && (
+            <div className="flex shrink-0 justify-center">
+              <CenterPot pot={poker.pot} bets={betsTotal} />
+            </div>
+          )}
+
           <PlayerSetup locked={showdownPending} compact />
+
+          {!showdownPending && <div className="min-h-0 flex-1" />}
 
           {showdownPending && (
             <div className="min-h-0 flex-1 overflow-hidden">
               <ShowdownPanel />
             </div>
           )}
-
-          {!showdownPending && <BoardCardLogger />}
 
           {showdownPending && (
             <div className="flex shrink-0 gap-2">
@@ -173,7 +227,7 @@ export function PokerTable() {
                   const err = undoLastAction();
                   setHandErr(err);
                 }}
-                className="h-11 w-full rounded-xl text-sm font-semibold disabled:opacity-40"
+                className="h-11 w-full rounded-full text-sm font-semibold disabled:opacity-40"
               >
                 ひとつ戻る
               </Button>
@@ -181,7 +235,7 @@ export function PokerTable() {
           )}
 
           {handErr && (
-            <p className="shrink-0 text-center text-sm text-red-500" role="alert">
+            <p className="shrink-0 text-center text-sm text-danger" role="alert">
               {handErr}
             </p>
           )}
@@ -195,13 +249,23 @@ export function PokerTable() {
   /* ── Setup / between hands: scrollable ── */
   return (
     <div className="relative min-h-dvh">
-      <header className="safe-top border-b border-border bg-background/90">
+      <header className="safe-top border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-3">
+          <div className="text-center">
+            <p className="bg-gradient-to-b from-[#3d7bff] to-[#0b1f4d] bg-clip-text text-2xl font-extrabold tracking-[0.2em] text-transparent">
+              REAL POKER
+            </p>
+            <p className="text-[10px] font-bold tracking-[0.4em] text-muted-foreground">
+              ENGINE
+            </p>
+          </div>
           <StreetProgress currentStreetIndex={currentStreetIndex} />
           <div className="flex items-stretch gap-2">
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
-              <Stat label="ポット" value={poker.pot} gold />
-              <Stat label="最小レイズ" value={poker.minRaise} />
+            <div className="flex min-w-0 flex-1 gap-2">
+              <PotStat pot={poker.pot} bets={betsTotal} />
+              <div className="w-24 shrink-0">
+                <Stat label="最小レイズ" value={poker.minRaise} />
+              </div>
             </div>
             <div className="flex items-center">
               <GameLog />
@@ -224,7 +288,8 @@ export function PokerTable() {
             size="lg"
             onClick={onStart}
             disabled={poker.players.length < 2 || poker.handInProgress || showdownPending}
-            className="h-14 min-w-0 flex-1 rounded-xl text-base font-bold tracking-wide shadow-md disabled:opacity-40"
+            variant="cta"
+            className="h-16 min-w-0 flex-1 rounded-full text-xl font-black tracking-[0.3em] disabled:opacity-40 disabled:shadow-none"
           >
             ハンド開始
           </Button>
@@ -237,77 +302,16 @@ export function PokerTable() {
               const err = undoLastAction();
               setHandErr(err);
             }}
-            className="h-14 shrink-0 rounded-xl px-4 text-sm font-semibold disabled:opacity-40"
+            className="h-16 shrink-0 rounded-full px-5 text-sm font-semibold disabled:opacity-40"
           >
             ひとつ戻る
           </Button>
         </div>
         {handErr && (
-          <p className="text-center text-sm text-red-500" role="alert">
+          <p className="text-center text-sm text-danger" role="alert">
             {handErr}
           </p>
         )}
-
-        <section className="space-y-3">
-          <SectionLabel>リアルタイム共有</SectionLabel>
-          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-            <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
-              <Input
-                value={wsUrlInput}
-                onChange={(e) => setWsUrlInput(e.target.value)}
-                placeholder="ws://localhost:8787"
-                className="h-9 text-sm"
-              />
-              <Input
-                value={roomCodeInput}
-                onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
-                placeholder="ROOM001"
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                onClick={() =>
-                  connectRealtime({ url: wsUrlInput, roomCode: roomCodeInput, role: "host" })
-                }
-              >
-                Host
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8"
-                onClick={() =>
-                  connectRealtime({ url: wsUrlInput, roomCode: roomCodeInput, role: "guest" })
-                }
-              >
-                Guest
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 text-muted-foreground"
-                onClick={disconnectRealtime}
-              >
-                切断
-              </Button>
-              <span className="text-[11px] text-muted-foreground">
-                {realtimeConnected
-                  ? `✦ 接続中 (${realtimeRole}) · ${realtimeRoomCode}`
-                  : "未接続"}
-              </span>
-            </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
-              別端末から接続する場合はホストPCのIPアドレスを指定
-            </p>
-            {realtimeError && (
-              <p className="mt-1 text-xs text-red-500">{realtimeError}</p>
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );
@@ -315,7 +319,7 @@ export function PokerTable() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+    <h2 className="px-0.5 text-[11px] font-bold tracking-[0.15em] text-royal">
       {children}
     </h2>
   );

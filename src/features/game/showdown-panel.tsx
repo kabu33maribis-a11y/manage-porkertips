@@ -3,24 +3,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { inCurrentHand } from "@/lib/poker";
+import { inCurrentHand, unresolvedPots } from "@/lib/poker";
 import { useGameStore } from "@/stores/game-store";
 
 const PLAYER_COLORS = [
-  "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
-  "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100",
-  "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100",
-  "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
+  "border-royal/50 bg-royal/10 text-royal hover:bg-royal/20",
+  "border-lime/70 bg-lime/15 text-lime-ink hover:bg-lime/25",
+  "border-orange/60 bg-orange/10 text-orange-ink hover:bg-orange/20",
+  "border-navy/40 bg-navy/10 text-navy hover:bg-navy/20",
 ] as const;
 
 const SELECTED_RING =
-  "ring-2 ring-amber-500 ring-offset-1 ring-offset-amber-50";
+  "ring-2 ring-orange ring-offset-1 ring-offset-background";
 
 export function ShowdownPanel() {
   const poker = useGameStore((s) => s.poker);
-  const showdownWinner = useGameStore((s) => s.showdownWinner);
-  const showdownChop = useGameStore((s) => s.showdownChop);
+  const showdownResolve = useGameStore((s) => s.showdownResolve);
   const [selected, setSelected] = useState<number[]>([]);
+  /** 決定済みの順位（強い順の席グループ。グループ内はチョップ） */
+  const [ranking, setRanking] = useState<number[][]>([]);
   const [holeNotes, setHoleNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,17 @@ export function ShowdownPanel() {
   const contenders = poker.players
     .map((pl, i) => ({ pl, i }))
     .filter(({ pl }) => inCurrentHand(pl));
+
+  const toIds = (r: number[][]) => r.map((tier) => tier.map((i) => poker.players[i].id));
+  const nameOf = (id: string) => poker.players.find((p) => p.id === id)?.name ?? id;
+
+  /** 今決める必要のあるサイドポット（最初の勝者決定後のみ） */
+  const nextPot = ranking.length > 0 ? unresolvedPots(poker.players, toIds(ranking))[0] : undefined;
+  const selectable = new Set(
+    nextPot
+      ? nextPot.contenderIds
+      : contenders.map(({ pl }) => pl.id),
+  );
 
   const buildShowdownNote = () => {
     const parts = contenders
@@ -50,44 +62,74 @@ export function ShowdownPanel() {
     );
   };
 
-  const confirmWinner = () => {
-    if (selected.length !== 1) return;
-    const err = showdownWinner(selected[0], buildShowdownNote() || undefined);
+  const resetAll = () => {
+    setSelected([]);
+    setRanking([]);
+    setError(null);
+  };
+
+  /** 選択中のプレイヤーを次の順位として確定。全ポットの行き先が決まれば分配する */
+  const confirmTier = () => {
+    if (selected.length === 0) return;
+    const next = [...ranking, selected];
+    const remaining = unresolvedPots(poker.players, toIds(next));
+    if (remaining.length > 0) {
+      setRanking(next);
+      setSelected([]);
+      setError(null);
+      return;
+    }
+    const err = showdownResolve(next, buildShowdownNote() || undefined);
     if (err) {
       setError(err);
       return;
     }
     setSelected([]);
+    setRanking([]);
     setHoleNotes({});
     setError(null);
   };
 
-  const confirmChop = () => {
-    if (selected.length < 2) return;
-    const err = showdownChop(selected, buildShowdownNote() || undefined);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setSelected([]);
-    setHoleNotes({});
-    setError(null);
-  };
+  const decided = ranking.map((tier) =>
+    tier.map((i) => poker.players[i].name).join(" と "),
+  );
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-2 overflow-hidden rounded-2xl border border-amber-300 bg-amber-50 p-3 shadow-sm">
+    <section className="flex h-full min-h-0 flex-col gap-2 overflow-hidden panel-glass rounded-2xl border-orange/50 p-3 shadow-[0_0_24px_rgb(255_138_31/0.15)]">
       <div className="shrink-0">
-        <p className="text-sm font-semibold text-amber-800">
-          ショーダウン — 勝者を選択
+        <p className="text-sm font-bold text-orange-ink">
+          {nextPot
+            ? `サイドポット ${nextPot.amount.toLocaleString("en-US")} の勝者を選択`
+            : "ショーダウン — 勝者を選択"}
         </p>
-        <p className="mt-0.5 text-[11px] text-amber-700/70">
-          ポット {poker.pot}
-          {poker.board.length > 0 ? ` · ボード ${poker.board.join(" ")}` : ""}
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {nextPot ? (
+            <>対象: {nextPot.contenderIds.map(nameOf).join(" / ")}</>
+          ) : (
+            <>
+              ポット {poker.pot}
+              {poker.board.length > 0 ? ` · ボード ${poker.board.join(" ")}` : ""}
+            </>
+          )}
         </p>
+        {decided.length > 0 && (
+          <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-background/50 px-2 py-1 text-[11px] text-foreground">
+            <span className="min-w-0 truncate">
+              {decided.map((d, k) => `${k + 1}位: ${d}`).join(" · ")}
+            </span>
+            <button
+              type="button"
+              onClick={resetAll}
+              className="shrink-0 font-semibold text-orange-ink underline-offset-2 hover:underline"
+            >
+              やり直す
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-amber-200 bg-white/70 p-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800/80">
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border bg-background/50 p-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-ink/80">
           公開ハンド（任意）
         </p>
         {contenders.map(({ pl }) => (
@@ -109,7 +151,7 @@ export function ShowdownPanel() {
 
       <div className="grid shrink-0 grid-cols-2 gap-1.5">
         {poker.players.map((pl, i) => {
-          const active = inCurrentHand(pl);
+          const active = inCurrentHand(pl) && selectable.has(pl.id);
           const isSelected = selected.includes(i);
           return (
             <Button
@@ -131,23 +173,24 @@ export function ShowdownPanel() {
       <div className="flex shrink-0 gap-2">
         <Button
           type="button"
-          className="h-10 flex-1 rounded-xl bg-amber-600 text-white hover:bg-amber-700"
+          variant="orange"
+          className="h-11 flex-1 rounded-full font-black"
           disabled={selected.length !== 1}
-          onClick={confirmWinner}
+          onClick={confirmTier}
         >
           勝者確定
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-10 flex-1 rounded-xl border-amber-400 text-amber-800 hover:bg-amber-100"
+          className="h-11 flex-1 rounded-full border-orange/60 text-orange-ink hover:bg-orange/15"
           disabled={selected.length < 2}
-          onClick={confirmChop}
+          onClick={confirmTier}
         >
           チョップ
         </Button>
       </div>
-      {error && <p className="shrink-0 text-sm text-red-500">{error}</p>}
+      {error && <p className="shrink-0 text-sm text-danger">{error}</p>}
     </section>
   );
 }

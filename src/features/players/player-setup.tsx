@@ -7,40 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useGameStore } from "@/stores/game-store";
+import { playerColor } from "./player-colors";
 
 const MAX_PLAYERS = 4;
-
-/** Per-player color tokens — visible on light background */
-const PLAYER_COLORS = [
-  {
-    accent: "bg-rose-500",
-    active: "border-rose-500 bg-rose-50 shadow-md ring-2 ring-rose-400/60",
-    chip: "border-rose-200 bg-rose-50 text-rose-700",
-    badge: "border-rose-300 bg-rose-50 text-rose-600",
-    btn: "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100",
-  },
-  {
-    accent: "bg-sky-500",
-    active: "border-sky-500 bg-sky-50 shadow-md ring-2 ring-sky-400/60",
-    chip: "border-sky-200 bg-sky-50 text-sky-700",
-    badge: "border-sky-300 bg-sky-50 text-sky-600",
-    btn: "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100",
-  },
-  {
-    accent: "bg-violet-500",
-    active: "border-violet-500 bg-violet-50 shadow-md ring-2 ring-violet-400/60",
-    chip: "border-violet-200 bg-violet-50 text-violet-700",
-    badge: "border-violet-300 bg-violet-50 text-violet-600",
-    btn: "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100",
-  },
-  {
-    accent: "bg-amber-500",
-    active: "border-amber-500 bg-amber-50 shadow-md ring-2 ring-amber-400/60",
-    chip: "border-amber-200 bg-amber-50 text-amber-700",
-    badge: "border-amber-300 bg-amber-50 text-amber-600",
-    btn: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-  },
-] as const;
 
 export function PlayerSetup({
   locked = false,
@@ -77,26 +46,26 @@ export function PlayerSetup({
         const isFolded = poker.handInProgress && p.status === "folded";
         const isOut = p.status === "out";
         const isAllIn = poker.handInProgress && p.status === "all-in";
-        const c = PLAYER_COLORS[index % PLAYER_COLORS.length];
+        const c = playerColor(index);
 
         return (
           <li
             key={p.id}
-            className={`relative min-w-0 flex-1 overflow-hidden rounded-xl border transition-all duration-200 ${
+            className={`relative min-w-0 flex-1 overflow-hidden rounded-2xl border transition-all duration-200 ${
               compact ? "px-1.5 py-1.5 sm:px-2.5 sm:py-2" : "px-1.5 py-2 sm:px-3 sm:py-2.5"
             } ${
               isFolded || isOut
                 ? "border-border/60 bg-muted/40 opacity-45 grayscale"
                 : isCurrent
-                  ? `${c.active} animate-pulse`
+                  ? `${c.active} animate-turn-glow`
                   : isAllIn
-                    ? "border-amber-400/70 bg-amber-50/80"
-                    : "border-border bg-muted/30"
+                    ? "border-orange/70 bg-orange/10"
+                    : "border-border bg-card shadow-sm"
             }`}
           >
             {isCurrent && !isFolded && (
               <div className="absolute -top-px inset-x-0 flex justify-center">
-                <span className="rounded-b-md bg-emerald-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
+                <span className={`rounded-b-md px-1.5 py-0.5 text-[8px] font-bold tracking-wider sm:px-2 sm:text-[9px] ${c.turnBadge}`}>
                   ▶ 番
                 </span>
               </div>
@@ -104,7 +73,7 @@ export function PlayerSetup({
 
             {(isFolded || isOut) && (
               <div className="absolute -top-px inset-x-0 flex justify-center">
-                <span className="rounded-b-md bg-zinc-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
+                <span className="rounded-b-md bg-[#55648a] px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
                   {isOut ? "OUT" : "FOLD"}
                 </span>
               </div>
@@ -112,7 +81,7 @@ export function PlayerSetup({
 
             {isAllIn && !isFolded && !isOut && (
               <div className="absolute -top-px inset-x-0 flex justify-center">
-                <span className="rounded-b-md bg-amber-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
+                <span className="rounded-b-md bg-orange px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-navy sm:px-2 sm:text-[9px]">
                   ALL-IN
                 </span>
               </div>
@@ -123,53 +92,46 @@ export function PlayerSetup({
                 isCurrent || isFolded || isOut || isAllIn ? "mt-3" : "mt-1"
               }`}
             >
-              <p
-                className={`truncate text-xs font-semibold sm:text-sm ${
-                  isFolded || isOut
-                    ? "text-muted-foreground line-through"
-                    : isCurrent
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {p.name}
-              </p>
-
-              {p.position && (
-                <span
-                  className={`inline-flex h-5 max-w-full items-center truncate rounded border px-1.5 text-[8px] font-bold uppercase tracking-wide sm:px-2 sm:text-[9px] ${
+              {/* 名前 + ポジション */}
+              <div className="flex min-w-0 items-center justify-between gap-1">
+                <p
+                  className={`min-w-0 truncate text-sm font-bold ${
                     isFolded || isOut
-                      ? "border-border bg-muted text-muted-foreground"
-                      : c.badge
+                      ? "text-muted-foreground line-through"
+                      : "text-foreground"
                   }`}
                 >
-                  {p.position === "D" && poker.players.filter((pl) => pl.status !== "out").length === 2
-                    ? "BTN/SB"
-                    : p.position}
-                </span>
-              )}
-
-              <div className="flex min-w-0 flex-wrap items-baseline gap-0.5 sm:gap-1.5">
-                <span
-                  className={`rounded-lg border px-1.5 py-0.5 font-mono text-sm font-bold tabular-nums sm:px-2 sm:text-base ${
-                    isFolded || isOut
-                      ? "border-border bg-muted text-muted-foreground"
-                      : c.chip
-                  }`}
-                >
-                  {p.stack}
-                </span>
-                {!compact && (
-                  <span className="text-[8px] text-muted-foreground sm:text-[9px]">chips</span>
+                  {p.name}
+                </p>
+                {p.position && (
+                  <span
+                    className={`inline-flex h-4 shrink-0 items-center rounded px-1 text-[9px] font-bold uppercase tracking-wide ${
+                      isFolded || isOut ? "bg-muted text-muted-foreground" : `${c.accent} text-white`
+                    }`}
+                  >
+                    {p.position === "D" && poker.players.filter((pl) => pl.status !== "out").length === 2
+                      ? "BTN/SB"
+                      : p.position}
+                  </span>
                 )}
               </div>
 
+              {/* 持ち額 */}
+              <p
+                className={`font-mono text-xl font-extrabold leading-none tabular-nums tracking-tight sm:text-2xl ${
+                  isFolded || isOut ? "text-muted-foreground" : "text-foreground"
+                }`}
+              >
+                {p.stack}
+              </p>
+
+              {/* 投入額 */}
               {poker.handInProgress && (
-                <div className="truncate text-[9px] tabular-nums text-muted-foreground sm:text-[10px]">
-                  投入:{" "}
+                <div className="flex items-center justify-between border-t border-border/60 pt-1 text-[11px] text-muted-foreground">
+                  <span>投入</span>
                   <span
-                    className={`font-semibold ${
-                      p.bet > 0 && !isFolded ? "text-foreground" : ""
+                    className={`font-mono text-sm font-bold tabular-nums ${
+                      p.bet > 0 && !isFolded ? "text-royal" : ""
                     }`}
                   >
                     {p.bet}
@@ -199,7 +161,7 @@ export function PlayerSetup({
   }
 
   return (
-    <Card className="border-border bg-card shadow-sm">
+    <Card className="border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-foreground">
           プレイヤー &amp; ブラインド

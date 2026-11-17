@@ -68,3 +68,15 @@ export function formatAllHandsForCopy(groups: HandLogGroup[]): string {
     .map((g) => formatHandLogForCopy(g))
     .join("\n\n---\n\n");
 }
+
+const ACTION_LINE = /: (フォールド|チェック|コール|ベット|レイズ)/;
+
+/** 現在ハンドで直近のプレイヤーアクション行（なければ null） */
+export function findLastPlayerAction(history: string[]): string | null {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const line = history[i];
+    if (line.includes(HAND_START)) return null;
+    if (ACTION_LINE.test(line)) return line;
+  }
+  return null;
+}
