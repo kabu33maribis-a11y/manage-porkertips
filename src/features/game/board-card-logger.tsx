@@ -43,15 +43,16 @@ export function BoardCardLogger() {
   };
 
   return (
-    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-3">
-      <p className="text-[11px] font-semibold text-amber-800">
-        {label}のカードを記録
-      </p>
-      <p className="mt-0.5 text-[10px] text-amber-700/80">
-        AI判定用ログ · {STREET_HINT[round]}
-        {board.length > 0 ? ` · 現在 ${board.join(" ")}` : ""}
-      </p>
-      <div className="mt-2 flex gap-2">
+    <div className="shrink-0 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[11px] font-semibold text-amber-800">
+          {label}記録
+          <span className="ml-1.5 font-normal text-amber-700/80">
+            {board.length > 0 ? board.join(" ") : STREET_HINT[round]}
+          </span>
+        </p>
+      </div>
+      <div className="mt-1.5 flex gap-2">
         <Input
           value={value}
           onChange={(e) => {
@@ -62,12 +63,12 @@ export function BoardCardLogger() {
             if (e.key === "Enter") onSubmit();
           }}
           placeholder={STREET_HINT[round]}
-          className="h-9 text-sm"
+          className="h-8 text-sm"
         />
         <Button
           type="button"
           size="sm"
-          className="h-9 shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+          className="h-8 shrink-0 bg-amber-600 text-white hover:bg-amber-700"
           onClick={onSubmit}
         >
           記録

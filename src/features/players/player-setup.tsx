@@ -42,7 +42,14 @@ const PLAYER_COLORS = [
   },
 ] as const;
 
-export function PlayerSetup({ locked = false }: { locked?: boolean }) {
+export function PlayerSetup({
+  locked = false,
+  compact = false,
+}: {
+  locked?: boolean;
+  /** ゲーム中: カード枠・リセットを省きプレイヤー行だけ表示 */
+  compact?: boolean;
+}) {
   const [name, setName] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
   const poker = useGameStore((s) => s.poker);
@@ -61,6 +68,135 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
   const [stackStr, setStackStr] = useState(String(initialStack));
 
   const atMaxPlayers = poker.players.length >= MAX_PLAYERS;
+
+  const playerRow = (
+    <ul className="flex gap-1.5 sm:gap-2">
+      {poker.players.map((p, index) => {
+        const isCurrent =
+          poker.handInProgress && index === poker.currentPlayerIndex;
+        const isFolded = poker.handInProgress && p.status === "folded";
+        const isOut = p.status === "out";
+        const isAllIn = poker.handInProgress && p.status === "all-in";
+        const c = PLAYER_COLORS[index % PLAYER_COLORS.length];
+
+        return (
+          <li
+            key={p.id}
+            className={`relative min-w-0 flex-1 overflow-hidden rounded-xl border transition-all duration-200 ${
+              compact ? "px-1.5 py-1.5 sm:px-2.5 sm:py-2" : "px-1.5 py-2 sm:px-3 sm:py-2.5"
+            } ${
+              isFolded || isOut
+                ? "border-border/60 bg-muted/40 opacity-45 grayscale"
+                : isCurrent
+                  ? `${c.active} animate-pulse`
+                  : isAllIn
+                    ? "border-amber-400/70 bg-amber-50/80"
+                    : "border-border bg-muted/30"
+            }`}
+          >
+            {isCurrent && !isFolded && (
+              <div className="absolute -top-px inset-x-0 flex justify-center">
+                <span className="rounded-b-md bg-emerald-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
+                  ▶ 番
+                </span>
+              </div>
+            )}
+
+            {(isFolded || isOut) && (
+              <div className="absolute -top-px inset-x-0 flex justify-center">
+                <span className="rounded-b-md bg-zinc-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
+                  {isOut ? "OUT" : "FOLD"}
+                </span>
+              </div>
+            )}
+
+            {isAllIn && !isFolded && !isOut && (
+              <div className="absolute -top-px inset-x-0 flex justify-center">
+                <span className="rounded-b-md bg-amber-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
+                  ALL-IN
+                </span>
+              </div>
+            )}
+
+            <div
+              className={`${compact ? "space-y-1" : "space-y-1.5 sm:space-y-2"} ${
+                isCurrent || isFolded || isOut || isAllIn ? "mt-3" : "mt-1"
+              }`}
+            >
+              <p
+                className={`truncate text-xs font-semibold sm:text-sm ${
+                  isFolded || isOut
+                    ? "text-muted-foreground line-through"
+                    : isCurrent
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {p.name}
+              </p>
+
+              {p.position && (
+                <span
+                  className={`inline-flex h-5 max-w-full items-center truncate rounded border px-1.5 text-[8px] font-bold uppercase tracking-wide sm:px-2 sm:text-[9px] ${
+                    isFolded || isOut
+                      ? "border-border bg-muted text-muted-foreground"
+                      : c.badge
+                  }`}
+                >
+                  {p.position === "D" && poker.players.filter((pl) => pl.status !== "out").length === 2
+                    ? "BTN/SB"
+                    : p.position}
+                </span>
+              )}
+
+              <div className="flex min-w-0 flex-wrap items-baseline gap-0.5 sm:gap-1.5">
+                <span
+                  className={`rounded-lg border px-1.5 py-0.5 font-mono text-sm font-bold tabular-nums sm:px-2 sm:text-base ${
+                    isFolded || isOut
+                      ? "border-border bg-muted text-muted-foreground"
+                      : c.chip
+                  }`}
+                >
+                  {p.stack}
+                </span>
+                {!compact && (
+                  <span className="text-[8px] text-muted-foreground sm:text-[9px]">chips</span>
+                )}
+              </div>
+
+              {poker.handInProgress && (
+                <div className="truncate text-[9px] tabular-nums text-muted-foreground sm:text-[10px]">
+                  投入:{" "}
+                  <span
+                    className={`font-semibold ${
+                      p.bet > 0 && !isFolded ? "text-foreground" : ""
+                    }`}
+                  >
+                    {p.bet}
+                  </span>
+                </div>
+              )}
+
+              {!setupFixed && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-full px-0 text-[10px] text-muted-foreground hover:text-foreground sm:px-1"
+                  onClick={() => removePlayer(p.id)}
+                >
+                  削除
+                </Button>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (compact) {
+    return <div className="min-w-0">{playerRow}</div>;
+  }
 
   return (
     <Card className="border-border bg-card shadow-sm">
@@ -148,125 +284,7 @@ export function PlayerSetup({ locked = false }: { locked?: boolean }) {
           </>
         )}
 
-        {/* Player cards — always one horizontal row */}
-        <ul className="flex gap-1.5 sm:gap-2">
-          {poker.players.map((p, index) => {
-            const isCurrent =
-              poker.handInProgress && index === poker.currentPlayerIndex;
-            const isFolded = poker.handInProgress && p.status === "folded";
-            const isOut = p.status === "out";
-            const isAllIn = poker.handInProgress && p.status === "all-in";
-            const c = PLAYER_COLORS[index % PLAYER_COLORS.length];
-
-            return (
-              <li
-                key={p.id}
-                className={`relative min-w-0 flex-1 overflow-hidden rounded-xl border px-1.5 py-2 sm:px-3 sm:py-2.5 transition-all duration-200 ${
-                  isFolded || isOut
-                    ? "border-border/60 bg-muted/40 opacity-45 grayscale"
-                    : isCurrent
-                      ? `${c.active} animate-pulse`
-                      : isAllIn
-                        ? "border-amber-400/70 bg-amber-50/80"
-                        : "border-border bg-muted/30"
-                }`}
-              >
-                {isCurrent && !isFolded && (
-                  <div className="absolute -top-px inset-x-0 flex justify-center">
-                    <span className="rounded-b-md bg-emerald-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
-                      ▶ 番
-                    </span>
-                  </div>
-                )}
-
-                {(isFolded || isOut) && (
-                  <div className="absolute -top-px inset-x-0 flex justify-center">
-                    <span className="rounded-b-md bg-zinc-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
-                      {isOut ? "OUT" : "FOLD"}
-                    </span>
-                  </div>
-                )}
-
-                {isAllIn && !isFolded && !isOut && (
-                  <div className="absolute -top-px inset-x-0 flex justify-center">
-                    <span className="rounded-b-md bg-amber-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
-                      ALL-IN
-                    </span>
-                  </div>
-                )}
-
-                <div
-                  className={`space-y-1.5 sm:space-y-2 ${
-                    isCurrent || isFolded || isOut || isAllIn ? "mt-3" : "mt-1"
-                  }`}
-                >
-                  <p
-                    className={`truncate text-xs font-semibold sm:text-sm ${
-                      isFolded || isOut
-                        ? "text-muted-foreground line-through"
-                        : isCurrent
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                    }`}
-                  >
-                    {p.name}
-                  </p>
-
-                  {p.position && (
-                    <span
-                      className={`inline-flex h-5 max-w-full items-center truncate rounded border px-1.5 text-[8px] font-bold uppercase tracking-wide sm:px-2 sm:text-[9px] ${
-                        isFolded || isOut
-                          ? "border-border bg-muted text-muted-foreground"
-                          : c.badge
-                      }`}
-                    >
-                      {p.position === "D" && poker.players.filter((pl) => pl.status !== "out").length === 2
-                        ? "BTN/SB"
-                        : p.position}
-                    </span>
-                  )}
-
-                  <div className="flex min-w-0 flex-wrap items-baseline gap-0.5 sm:gap-1.5">
-                    <span
-                      className={`rounded-lg border px-1.5 py-0.5 font-mono text-sm font-bold tabular-nums sm:px-2 sm:text-base ${
-                        isFolded || isOut
-                          ? "border-border bg-muted text-muted-foreground"
-                          : c.chip
-                      }`}
-                    >
-                      {p.stack}
-                    </span>
-                    <span className="text-[8px] text-muted-foreground sm:text-[9px]">chips</span>
-                  </div>
-
-                  {poker.handInProgress && (
-                    <div className="truncate text-[9px] tabular-nums text-muted-foreground sm:text-[10px]">
-                      投入:{" "}
-                      <span
-                        className={`font-semibold ${
-                          p.bet > 0 && !isFolded ? "text-foreground" : ""
-                        }`}
-                      >
-                        {p.bet}
-                      </span>
-                    </div>
-                  )}
-
-                  {!setupFixed && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-full px-0 text-[10px] text-muted-foreground hover:text-foreground sm:px-1"
-                      onClick={() => removePlayer(p.id)}
-                    >
-                      削除
-                    </Button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        {playerRow}
 
         <Button
           type="button"
