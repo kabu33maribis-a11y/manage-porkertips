@@ -7,9 +7,16 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sora), var(--font-noto-jp), system-ui, sans-serif;
+  --font-mono: var(--font-sora), var(--font-noto-jp), ui-monospace, monospace;
+  --font-heading: var(--font-sora), var(--font-noto-jp), system-ui, sans-serif;
+  --color-royal: var(--royal);
+  --color-navy: var(--navy);
+  --color-lime: var(--lime);
+  --color-lime-ink: var(--lime-ink);
+  --color-orange: var(--orange);
+  --color-orange-ink: var(--orange-ink);
+  --color-danger: var(--danger);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,61 +55,50 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ── Casino Light Theme ─────────────────────────────────────── */
+/* ── AIR BLUE Theme ───────────────────────────────────────────
+   クリーンで近未来的なカジュアル3D。
+   ロイヤルブルー=主役(操作・進行・手番) / ライム=OK / オレンジ=ポット・注意 / ネイビー=文字・FOLD */
 :root {
-  --background:        oklch(0.98 0.008 95);
-  --foreground:        oklch(0.22 0.02 250);
-  --card:              oklch(1 0 0);
-  --card-foreground:   oklch(0.22 0.02 250);
-  --popover:           oklch(1 0 0);
-  --popover-foreground:oklch(0.22 0.02 250);
-  --primary:           oklch(0.52 0.14 145);
-  --primary-foreground:oklch(0.99 0 0);
-  --secondary:         oklch(0.95 0.015 95);
-  --secondary-foreground:oklch(0.30 0.02 250);
-  --muted:             oklch(0.95 0.01 95);
-  --muted-foreground:  oklch(0.50 0.02 250);
-  --accent:            oklch(0.94 0.03 145);
-  --accent-foreground: oklch(0.25 0.04 145);
-  --destructive:       oklch(0.55 0.22 27);
-  --border:            oklch(0.88 0.015 95);
-  --input:             oklch(0.92 0.01 95);
-  --ring:              oklch(0.52 0.14 145);
-  --chart-1: oklch(0.52 0.14 145);
-  --chart-2: oklch(0.65 0.12 84);
-  --chart-3: oklch(0.55 0.10 200);
-  --chart-4: oklch(0.60 0.14 30);
-  --chart-5: oklch(0.55 0.12 280);
-  --radius: 0.625rem;
-  --sidebar:                oklch(0.98 0.008 95);
-  --sidebar-foreground:     oklch(0.22 0.02 250);
-  --sidebar-primary:        oklch(0.52 0.14 145);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent:         oklch(0.95 0.015 95);
-  --sidebar-accent-foreground: oklch(0.30 0.02 250);
-  --sidebar-border:         oklch(0.88 0.015 95);
-  --sidebar-ring:           oklch(0.52 0.14 145);
-}
-
-.dark {
-  --background:        oklch(0.98 0.008 95);
-  --foreground:        oklch(0.22 0.02 250);
-  --card:              oklch(1 0 0);
-  --card-foreground:   oklch(0.22 0.02 250);
-  --popover:           oklch(1 0 0);
-  --popover-foreground:oklch(0.22 0.02 250);
-  --primary:           oklch(0.52 0.14 145);
-  --primary-foreground:oklch(0.99 0 0);
-  --secondary:         oklch(0.95 0.015 95);
-  --secondary-foreground:oklch(0.30 0.02 250);
-  --muted:             oklch(0.95 0.01 95);
-  --muted-foreground:  oklch(0.50 0.02 250);
-  --accent:            oklch(0.94 0.03 145);
-  --accent-foreground: oklch(0.25 0.04 145);
-  --destructive:       oklch(0.55 0.22 27);
-  --border:            oklch(0.88 0.015 95);
-  --input:             oklch(0.92 0.01 95);
-  --ring:              oklch(0.52 0.14 145);
+  --background:        #f3f6fc;
+  --foreground:        #0b1f4d;
+  --card:              #ffffff;
+  --card-foreground:   #0b1f4d;
+  --popover:           #ffffff;
+  --popover-foreground:#0b1f4d;
+  --primary:           #1f5cff;
+  --primary-foreground:#ffffff;
+  --secondary:         #e6edfb;
+  --secondary-foreground:#0b1f4d;
+  --muted:             #e9eef8;
+  --muted-foreground:  #55648a;
+  --accent:            #dfe9ff;
+  --accent-foreground: #0b1f4d;
+  --destructive:       #e5484d;
+  --border:            #d3ddf2;
+  --input:             #c3d0ec;
+  --ring:              #1f5cff;
+  --royal:      #1f5cff;
+  --navy:       #0b1f4d;
+  --lime:       #8ee000;
+  --lime-ink:   #3d7400;
+  --orange:     #ff8a1f;
+  --orange-ink: #b04d00;
+  --danger:     #e5484d;
+  --chart-1: #1f5cff;
+  --chart-2: #ff8a1f;
+  --chart-3: #8ee000;
+  --chart-4: #0b1f4d;
+  --chart-5: #7ea6ff;
+  --radius: 0.875rem;
+  --sidebar:                #ffffff;
+  --sidebar-foreground:     #0b1f4d;
+  --sidebar-primary:        #1f5cff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:         #e6edfb;
+  --sidebar-accent-foreground: #0b1f4d;
+  --sidebar-border:         #d3ddf2;
+  --sidebar-ring:           #1f5cff;
+  color-scheme: light;
 }
 
 @layer base {
@@ -112,21 +108,16 @@
   body {
     @apply bg-background text-foreground min-h-dvh;
     background-image:
-      radial-gradient(
-        ellipse 120% 55% at 50% -10%,
-        oklch(0.94 0.04 145 / 0.5),
-        transparent 55%
-      ),
-      radial-gradient(
-        ellipse 70% 40% at 100% 100%,
-        oklch(0.96 0.03 84 / 0.3),
-        transparent 55%
-      );
+      radial-gradient(ellipse 130% 50% at 50% -12%, rgb(31 92 255 / 0.2), transparent 65%),
+      radial-gradient(ellipse 70% 35% at 0% 100%, rgb(31 92 255 / 0.08), transparent 65%),
+      repeating-linear-gradient(90deg, rgb(11 31 77 / 0.035) 0 1px, transparent 1px 56px);
+    background-attachment: fixed;
   }
   html {
     @apply font-sans;
   }
 }
+
 
 @layer utilities {
   .safe-bottom {
@@ -135,14 +126,18 @@
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
-  /* Gold divider */
+  /* 手番プレイヤーの柔らかいリング */
+  .animate-turn-glow {
+    box-shadow: 0 0 0 3px rgb(31 92 255 / 0.22), 0 8px 16px rgb(11 31 77 / 0.12);
+  }
+  /* 白い厚みのあるパネル */
+  .panel-glass {
+    background: linear-gradient(180deg, #ffffff, #f1f5fd);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 0 #fff inset, 0 8px 20px rgb(11 31 77 / 0.08);
+  }
   .divider-gold {
-    background: linear-gradient(
-      to right,
-      transparent,
-      oklch(0.75 0.12 84 / 0.45),
-      transparent
-    );
+    background: linear-gradient(to right, transparent, rgb(31 92 255 / 0.35), transparent);
     height: 1px;
   }
 }

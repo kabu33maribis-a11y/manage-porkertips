@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "物理テーブル用テキサスホールデム進行サポート",
     start_url: "/",
     display: "standalone",
-    background_color: "#fafafa",
-    theme_color: "#f8faf8",
+    background_color: "#f3f6fc",
+    theme_color: "#f3f6fc",
     orientation: "portrait",
   };
 }

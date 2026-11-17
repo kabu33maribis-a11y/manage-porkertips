@@ -12,7 +12,7 @@ import {
   ROUND_ORDER,
   canVoluntarilyAct,
 } from "./helpers";
-import { computeSidePots, distributeSidePots } from "./pots";
+import { computeSidePots, distributeByRanking, distributeSidePots } from "./pots";
 
 export type ApplyResult =
   | { ok: true; state: PokerState }
@@ -83,32 +83,6 @@ export function appendHistoryNote(state: PokerState, note: string): ApplyResult 
   if (!trimmed) return { ok: false, error: "内容が空です" };
   const s = cloneStateBase(state);
   pushHistory(s, trimmed);
-  return { ok: true, state: s };
-}
-
-const STREET_CARD_LABELS: Partial<Record<PokerState["round"], string>> = {
-  Flop: "フロップ",
-  Turn: "ターン",
-  River: "リバー",
-};
-
-/** 現在ストリートのボードカードを簡潔に記録 */
-export function recordBoardCards(state: PokerState, cardsText: string): ApplyResult {
-  const label = STREET_CARD_LABELS[state.round];
-  if (!label) {
-    return { ok: false, error: "フロップ〜リバーでのみボードを記録できます" };
-  }
-  const trimmed = cardsText.trim().replace(/\s+/g, " ");
-  if (!trimmed) return { ok: false, error: "カードを入力してください" };
-
-  const s = cloneStateBase(state);
-  const tokens = trimmed.split(" ").filter(Boolean);
-  if (s.round === "Flop") {
-    s.board = tokens;
-  } else {
-    s.board = [...s.board, ...tokens];
-  }
-  pushHistory(s, `${label}: ${trimmed}`);
   return { ok: true, state: s };
 }
 
@@ -288,50 +262,6 @@ function sortBySeatFromDealer(state: PokerState, indices: number[]): number[] {
     const distB = (b - dealer + n) % n;
     return distA - distB;
   });
-}
-
-function awardPotChop(
-  state: PokerState,
-  winnerIndices: number[],
-  reason: string,
-): void {
-  const winnerIds = winnerIndices.map((i) => state.players[i].id);
-  const sidePots = computeSidePots(state.players);
-  const pot = state.pot;
-
-  const awards =
-    sidePots.length > 0
-      ? distributeSidePots(state.players, sidePots, winnerIds, {
-          chop: true,
-          dealerIndex: state.dealerIndex,
-        })
-      : (() => {
-          const fallback = new Map<string, number>();
-          const count = winnerIndices.length;
-          const share = Math.floor(pot / count);
-          const remainder = pot % count;
-          const ordered = sortBySeatFromDealer(state, winnerIndices);
-
-          for (const idx of ordered) {
-            fallback.set(state.players[idx].id, share);
-          }
-          for (let i = 0; i < remainder; i++) {
-            const id = state.players[ordered[i]].id;
-            fallback.set(id, (fallback.get(id) ?? 0) + 1);
-          }
-          return fallback;
-        })();
-
-  const names = sortBySeatFromDealer(state, winnerIndices)
-    .map((i) => state.players[i].name)
-    .join(" と ");
-  const suffix = reason ? `（${reason}）` : "";
-  const summary =
-    sidePots.length > 0
-      ? formatPotAwards(state, awards, suffix)
-      : `${names} がポット ${pot} をチョップ${suffix}`;
-
-  applyPotAwards(state, awards, summary);
 }
 
 function maybeSingleWinner(state: PokerState): ApplyResult | null {
@@ -611,17 +541,75 @@ export function applyAction(
   return { ok: true, state: s };
 }
 
+/**
+ * ショーダウン後、順位に従ってポットを分配してハンドを閉じる。
+ * @param ranking 強い順の席インデックスのグループ。グループ内は同点（チョップ）。
+ *   例: [[0], [2]] = 席0 が最強、次に席2。
+ *   参加資格のある中で最上位のグループが各ポット（メイン／サイド）を取る。
+ *   どのグループも参加していないポットが残る場合はエラー（チップ消失を防ぐ）。
+ */
+export function distributePotByRankingAndEndHand(
+  state: PokerState,
+  ranking: number[][],
+): ApplyResult {
+  const tiers = ranking.map((tier) => [...new Set(tier)]).filter((t) => t.length > 0);
+  if (tiers.length === 0) return { ok: false, error: "勝者を選択してください" };
+  const seen = new Set<number>();
+  for (const tier of tiers) {
+    for (const idx of tier) {
+      const p = state.players[idx];
+      if (!p) return { ok: false, error: "無効な席です" };
+      if (!inCurrentHand(p)) return { ok: false, error: `${p.name} はハンドに参加していません` };
+      if (seen.has(idx)) return { ok: false, error: `${p.name} が重複しています` };
+      seen.add(idx);
+    }
+  }
+
+  const s = cloneStateBase(state);
+  const idRanking = tiers.map((tier) => tier.map((i) => s.players[i].id));
+  const sidePots = computeSidePots(s.players);
+
+  if (sidePots.length === 0) {
+    // 拠出記録がない場合のフォールバック: 最上位グループで均等分割
+    const top = sortBySeatFromDealer(s, tiers[0]);
+    const share = Math.floor(s.pot / top.length);
+    const awards = new Map<string, number>();
+    top.forEach((i, k) =>
+      awards.set(s.players[i].id, share + (k < s.pot % top.length ? 1 : 0)),
+    );
+    applyPotAwards(s, awards, formatPotAwards(s, awards, "（ショーダウン）"));
+    return { ok: true, state: s };
+  }
+
+  const { awards, unresolved } = distributeByRanking(
+    s.players,
+    sidePots,
+    idRanking,
+    s.dealerIndex,
+  );
+  if (unresolved.length > 0) {
+    const names = unresolved[0].contenderIds
+      .map((id) => s.players.find((p) => p.id === id)?.name ?? id)
+      .join(" / ");
+    return {
+      ok: false,
+      error: `サイドポット ${unresolved[0].amount}（${names}）の勝者が未選択です`,
+    };
+  }
+
+  applyPotAwards(s, awards, formatPotAwards(s, awards, "（ショーダウン）"));
+  return { ok: true, state: s };
+}
+
 /** ショーダウン後にポットを手動分配してハンドを閉じる（勝者席インデックス） */
 export function distributePotAndEndHand(
   state: PokerState,
   winnerIndex: number,
 ): ApplyResult {
-  if (!inCurrentHand(state.players[winnerIndex])) {
+  if (!state.players[winnerIndex] || !inCurrentHand(state.players[winnerIndex])) {
     return { ok: false, error: "勝者がハンドに参加していません" };
   }
-  const s = cloneStateBase(state);
-  awardPot(s, winnerIndex, "ショーダウン");
-  return { ok: true, state: s };
+  return distributePotByRankingAndEndHand(state, [[winnerIndex]]);
 }
 
 /** ショーダウン後にポットをチョップ（均等分割）してハンドを閉じる */
@@ -633,15 +621,5 @@ export function distributePotChopAndEndHand(
   if (unique.length < 2) {
     return { ok: false, error: "チョップには2人以上の勝者が必要です" };
   }
-  for (const idx of unique) {
-    if (!state.players[idx]) {
-      return { ok: false, error: "無効な席です" };
-    }
-    if (!inCurrentHand(state.players[idx])) {
-      return { ok: false, error: "チョップ対象がハンドに参加していません" };
-    }
-  }
-  const s = cloneStateBase(state);
-  awardPotChop(s, unique, "ショーダウン");
-  return { ok: true, state: s };
+  return distributePotByRankingAndEndHand(state, [unique]);
 }

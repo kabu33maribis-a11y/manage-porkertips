@@ -1,15 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Noto_Sans_JP, Sora } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sora = Sora({
+  variable: "--font-sora",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const notoJp = Noto_Sans_JP({
+  variable: "--font-noto-jp",
+  preload: false,
+  weight: ["500", "700", "900"],
 });
 
 export const metadata: Metadata = {
@@ -23,7 +25,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#f8faf8",
+  themeColor: "#f3f6fc",
 };
 
 export default function RootLayout({
@@ -34,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground min-h-dvh antialiased selection:bg-amber-400/30`}
+        className={`${sora.variable} ${notoJp.variable} bg-background text-foreground min-h-dvh antialiased selection:bg-royal/25`}
       >
         {children}
       </body>
