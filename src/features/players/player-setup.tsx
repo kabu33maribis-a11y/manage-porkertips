@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useGameStore } from "@/stores/game-store";
+import { isClockTarget } from "@/lib/poker";
 import { playerColor } from "./player-colors";
 
 const MAX_PLAYERS = 4;
@@ -24,6 +25,7 @@ export function PlayerSetup({
   const [confirmReset, setConfirmReset] = useState(false);
   const poker = useGameStore((s) => s.poker);
   const initialStack = useGameStore((s) => s.initialStack);
+  const clock = useGameStore((s) => s.clock);
   const hasStartedOnce = poker.history.some((line) => line.includes("ハンド開始"));
   const handInProgress = poker.handInProgress || locked;
   const setupFixed = hasStartedOnce || handInProgress;
@@ -102,6 +104,14 @@ export function PlayerSetup({
                 >
                   {p.name}
                 </p>
+                {isClockTarget(clock, p.id) && (
+                  <span
+                    className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground"
+                    title="タイムバンクカード残り"
+                  >
+                    ⏱{p.timeBankCards ?? 0}
+                  </span>
+                )}
                 {p.position && (
                   <span
                     className={`inline-flex shrink-0 items-center justify-center font-bold uppercase tracking-wide ${

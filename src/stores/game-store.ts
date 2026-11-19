@@ -6,15 +6,38 @@ import {
   applyAction,
   appendHistoryNote,
   createEmptyPokerState,
+  DEFAULT_CLOCK_CONFIG,
   distributePotByRankingAndEndHand,
   ensureDerivedArrays,
   popUndoSnapshot,
   pushUndoSnapshot,
+  normalizeClockConfig,
   recordShowdownCards,
+  resetTimeBankCards as resetCards,
+  spendTimeBankCard as spendCard,
   startHand,
 } from "@/lib/poker";
 import { loadGameSnapshot, saveGameSnapshot } from "@/lib/storage/game-db";
-import type { PokerAction, PokerState } from "@/types/poker";
+import type { ClockConfig, PokerAction, PokerState } from "@/types/poker";
+
+const CLOCK_STORAGE_KEY = "poker-clock-config";
+
+function loadClockConfig(): ClockConfig {
+  try {
+    const raw = localStorage.getItem(CLOCK_STORAGE_KEY);
+    return normalizeClockConfig(raw ? JSON.parse(raw) : null);
+  } catch {
+    return normalizeClockConfig(null);
+  }
+}
+
+function saveClockConfig(config: ClockConfig): void {
+  try {
+    localStorage.setItem(CLOCK_STORAGE_KEY, JSON.stringify(config));
+  } catch {
+    /* ignore */
+  }
+}
 
 function debounce<T extends (state: PokerState) => void>(fn: T, ms: number) {
   let t: ReturnType<typeof setTimeout> | undefined;
@@ -33,6 +56,7 @@ interface GameStore {
   undoStack: PokerState[];
   hydrated: boolean;
   initialStack: number;
+  clock: ClockConfig;
   hydrate: () => Promise<void>;
   setBlinds: (sb: number, bb: number) => void;
   setInitialStack: (n: number) => void;
@@ -46,6 +70,12 @@ interface GameStore {
   showdownResolve: (ranking: number[][], cardsNote?: string) => string | null;
   undoLastAction: () => string | null;
   resetSession: () => void;
+  /** クロック設定を更新（undo 対象外） */
+  setClockConfig: (patch: Partial<ClockConfig>) => void;
+  /** タイムバンクカードを1枚使用（undo 対象） */
+  spendTimeBankCard: (playerIndex: number) => string | null;
+  /** 全員のカード枚数を設定枚数にリセット（undo 対象） */
+  resetTimeBankCards: () => void;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -67,8 +97,13 @@ export const useGameStore = create<GameStore>()(
     undoStack: [],
     hydrated: false,
     initialStack: 5000,
+    clock: { ...DEFAULT_CLOCK_CONFIG, excludedPlayerIds: [] },
 
     hydrate: async () => {
+      const clock = loadClockConfig();
+      set((draft) => {
+        draft.clock = clock;
+      });
       const loaded = await loadGameSnapshot();
       if (loaded) {
         ensureDerivedArrays(loaded);
@@ -116,6 +151,7 @@ export const useGameStore = create<GameStore>()(
           totalContributed: 0,
           status: "active",
           position: null,
+          timeBankCards: draft.clock.cardCount,
         });
         draft.poker.actedThisStreet = draft.poker.players.map(() => false);
       });
@@ -204,6 +240,31 @@ export const useGameStore = create<GameStore>()(
         draft.undoStack = [];
       });
       queuePersist(get().poker);
+    },
+
+    setClockConfig: (patch) => {
+      const next = normalizeClockConfig({ ...get().clock, ...patch });
+      set((draft) => {
+        draft.clock = next;
+      });
+      saveClockConfig(next);
+      // 最初のハンド開始前なら配布枚数の変更を全員に反映
+      const poker = get().poker;
+      const started = poker.history.some((line) => line.includes("ハンド開始"));
+      if (patch.cardCount !== undefined && !started && !poker.handInProgress) {
+        commitPoker(resetCards(poker, next.cardCount), false);
+      }
+    },
+
+    spendTimeBankCard: (playerIndex) => {
+      const res = spendCard(get().poker, playerIndex);
+      if (!res.ok) return res.error;
+      commitPoker(res.state, true);
+      return null;
+    },
+
+    resetTimeBankCards: () => {
+      commitPoker(resetCards(get().poker, get().clock.cardCount), true);
     },
   };
   }),

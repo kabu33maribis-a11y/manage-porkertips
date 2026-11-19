@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { ClockSettings } from "@/features/clock/clock-settings";
 import { BettingControls } from "@/features/betting/betting-controls";
 import { PlayerSetup } from "@/features/players/player-setup";
 import { GameLog } from "@/features/game/game-log";
@@ -116,6 +126,35 @@ function ResetTableButton() {
     >
       {confirm ? "⚠ もう一度押して確定" : "テーブルリセット"}
     </Button>
+  );
+}
+
+/** リザルト画面用: クロック設定ダイアログ */
+function ClockSettingsDialog() {
+  const enabled = useGameStore((s) => s.clock.enabled);
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={
+          <Button
+            type="button"
+            variant={enabled ? "default" : "outline"}
+            className="h-9 rounded-xl px-3 text-[11px] font-medium"
+          />
+        }
+      >
+        ⏱ クロック
+      </DialogTrigger>
+      <DialogContent className="max-h-[min(85dvh,640px)] overflow-y-auto sm:max-w-md">
+        <DialogHeader className="pr-8">
+          <DialogTitle>クロック設定</DialogTitle>
+          <DialogDescription className="text-[11px]">
+            持ち時間・タイムバンクカード・適用ユーザーを変更できます
+          </DialogDescription>
+        </DialogHeader>
+        <ClockSettings showReset />
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -306,6 +345,7 @@ export function PokerTable() {
           >
             <ResetTableButton />
             <div className="flex items-center gap-2">
+              <ClockSettingsDialog />
               <Button
                 type="button"
                 variant={landscape ? "default" : "outline"}
@@ -411,6 +451,15 @@ export function PokerTable() {
         <section className="space-y-3">
           <SectionLabel>テーブル</SectionLabel>
           <PlayerSetup locked={showdownPending} />
+        </section>
+
+        <section className="space-y-3">
+          <SectionLabel>クロック</SectionLabel>
+          <Card className="border-border">
+            <CardContent className="pt-4">
+              <ClockSettings />
+            </CardContent>
+          </Card>
         </section>
 
         <div className="divider-gold" />

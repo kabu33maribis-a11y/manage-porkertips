@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { validateAction } from "@/lib/poker";
+import { isClockTarget, validateAction } from "@/lib/poker";
+import { TurnClock } from "@/features/clock/turn-clock";
 import { useGameStore } from "@/stores/game-store";
 import { playerColor } from "@/features/players/player-colors";
 import { ActionWheel, type WheelAnchor } from "./action-wheel";
@@ -12,6 +13,7 @@ export function BettingControls() {
   const submitAction = useGameStore((s) => s.submitAction);
   const undoLastAction = useGameStore((s) => s.undoLastAction);
   const canUndo = useGameStore((s) => s.undoStack.length > 0);
+  const clock = useGameStore((s) => s.clock);
   const [error, setError] = useState<string | null>(null);
 
   const idx = poker.currentPlayerIndex;
@@ -20,6 +22,16 @@ export function BettingControls() {
   const minTotal = poker.currentBet + poker.minRaise;
 
   if (!poker.handInProgress || poker.round === "Showdown") return null;
+
+  // 手番が変わる（アクション・undo）たびにクロックを再スタートさせるキー
+  const turnKey = [
+    idx,
+    poker.round,
+    poker.history.length,
+    poker.history[poker.history.length - 1] ?? "",
+    poker.pot,
+    poker.actedThisStreet.join(""),
+  ].join("|");
 
   const toCall = p ? Math.max(0, poker.currentBet - p.bet) : 0;
   const callAmount = p ? Math.min(toCall, p.stack) : 0;
@@ -127,6 +139,8 @@ export function BettingControls() {
             ひとつ戻る
           </Button>
         </div>
+
+        {isClockTarget(clock, p?.id) && <TurnClock key={turnKey} playerIndex={idx} />}
 
         <ActionWheel
           key={`${idx}-${poker.round}-${poker.currentBet}`}

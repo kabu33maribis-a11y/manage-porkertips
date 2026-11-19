@@ -74,6 +74,9 @@ function syncActedLength(state: PokerState): void {
 export function ensureDerivedArrays(state: PokerState): PokerState {
   syncActedLength(state);
   if (!state.board) state.board = [];
+  for (const p of state.players) {
+    if (typeof p.timeBankCards !== "number") p.timeBankCards = 0;
+  }
   return state;
 }
 
