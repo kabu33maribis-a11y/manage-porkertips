@@ -10,6 +10,7 @@ import { useGameStore } from "@/stores/game-store";
 import { playerColor } from "./player-colors";
 
 const MAX_PLAYERS = 4;
+const FAVORITE_NAMES = ["かぶ", "しま", "たお"] as const;
 
 export function PlayerSetup({
   locked = false,
@@ -248,6 +249,25 @@ export function PlayerSetup({
               >
                 追加
               </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">よく使う名前</span>
+              {FAVORITE_NAMES.map((fav) => {
+                const added = poker.players.some((p) => p.name === fav);
+                return (
+                  <Button
+                    key={fav}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={atMaxPlayers || added}
+                    onClick={() => addPlayer(fav)}
+                    className="h-8 rounded-full px-4 text-sm font-semibold disabled:opacity-40"
+                  >
+                    {fav}
+                  </Button>
+                );
+              })}
             </div>
             {atMaxPlayers && (
               <p className="text-xs text-muted-foreground">最大 {MAX_PLAYERS} 人まで</p>
