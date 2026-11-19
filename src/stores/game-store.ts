@@ -181,8 +181,8 @@ export const useGameStore = create<GameStore>()(
       }
       const res = distributePotByRankingAndEndHand(poker, ranking);
       if (!res.ok) return res.error;
-      const autoStart = startHand(res.state);
-      commitPoker(autoStart.ok ? autoStart.state : res.state, true);
+      // 次のハンドは結果画面の「次のハンドへ」で開始する
+      commitPoker(res.state, true);
       return null;
     },
 

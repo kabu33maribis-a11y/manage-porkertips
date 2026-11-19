@@ -232,7 +232,7 @@ export function ActionWheel({
     <svg
       ref={svgRef}
       viewBox={`0 0 ${VB_W} ${VB_H}`}
-      className="mx-auto block w-full max-w-[340px] select-none"
+      className="mx-auto block w-full max-w-[340px] max-h-[32dvh] select-none"
       style={{ touchAction: "none", fontFamily: SANS, WebkitTapHighlightColor: "transparent" }}
       onPointerDown={() => setPending(null)}
       role="group"
