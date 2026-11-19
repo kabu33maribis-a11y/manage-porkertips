@@ -77,11 +77,11 @@ function CenterPot({ pot, bets }: { pot: number; bets: number }) {
   const base = Math.max(0, pot - bets);
   return (
     <div
-      className="flex w-full max-w-[18rem] flex-col items-center justify-center rounded-full border border-orange/50 bg-gradient-to-b from-orange/15 to-orange/5 px-8 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_10px_24px_-14px_rgba(176,77,0,0.55)]"
+      className="flex w-full max-w-[16rem] flex-col items-center justify-center rounded-full border border-orange/50 bg-gradient-to-b from-orange/15 to-orange/5 px-6 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_10px_24px_-14px_rgba(176,77,0,0.55)]"
       aria-label={`ポット ${pot}`}
     >
       <p className="text-[10px] font-bold tracking-[0.35em] text-orange-ink/70">POT</p>
-      <p className="font-mono text-4xl font-extrabold leading-tight tabular-nums tracking-tight text-orange-ink">
+      <p className="font-mono text-3xl font-extrabold leading-none tabular-nums tracking-tight text-orange-ink">
         {pot.toLocaleString("en-US")}
       </p>
       <p
@@ -92,6 +92,30 @@ function CenterPot({ pot, bets }: { pot: number; bets: number }) {
         <span className="ml-1 text-[10px]">（このラウンド）</span>
       </p>
     </div>
+  );
+}
+
+/** テーブルリセット（誤操作防止のため2回押しで確定） */
+function ResetTableButton() {
+  const resetSession = useGameStore((s) => s.resetSession);
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant={confirm ? "destructive" : "outline"}
+      onClick={() => {
+        if (!confirm) {
+          setConfirm(true);
+          return;
+        }
+        resetSession();
+        setConfirm(false);
+      }}
+      onBlur={() => setConfirm(false)}
+      className="h-9 rounded-xl px-3 text-[11px] font-medium"
+    >
+      {confirm ? "⚠ もう一度押して確定" : "テーブルリセット"}
+    </Button>
   );
 }
 
@@ -206,9 +230,11 @@ export function PokerTable() {
             </div>
           )}
 
-          <PlayerSetup locked={showdownPending} compact />
+          <div className="shrink-0">
+            <PlayerSetup locked={showdownPending} compact />
+          </div>
 
-          {!showdownPending && <div className="min-h-0 flex-1" />}
+          {!showdownPending && <div className="min-h-0 flex-1 shrink-0" />}
 
           {showdownPending && (
             <div className="min-h-0 flex-1 overflow-hidden">
@@ -242,6 +268,63 @@ export function PokerTable() {
         </div>
 
         <BettingControls />
+      </div>
+    );
+  }
+
+  /* ── Hand result: who won what, next hand button ── */
+  const lastLine = poker.history[poker.history.length - 1] ?? "";
+  if (lastLine.startsWith("結果:")) {
+    const resultText = lastLine.replace(/^結果:\s*/, "");
+    return (
+      <div className="safe-top safe-bottom flex h-dvh flex-col overflow-hidden">
+        <header className="shrink-0 border-b border-border bg-background/80 backdrop-blur">
+          <div className="mx-auto flex max-w-lg items-center justify-between gap-2 px-3 py-2">
+            <ResetTableButton />
+            <GameLog />
+          </div>
+        </header>
+
+        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col justify-center gap-4 px-3 py-4">
+          <div className="rounded-3xl border border-orange/50 bg-gradient-to-b from-orange/15 to-orange/5 px-5 py-6 text-center shadow-sm">
+            <p className="text-[10px] font-bold tracking-[0.35em] text-orange-ink/70">
+              HAND RESULT
+            </p>
+            <p className="mt-2 text-xl font-extrabold leading-snug text-orange-ink">
+              {resultText}
+            </p>
+          </div>
+          <PlayerSetup locked compact />
+        </div>
+
+        <div className="mx-auto w-full max-w-lg shrink-0 space-y-2 px-3 pb-3">
+          {handErr && (
+            <p className="text-center text-sm text-danger" role="alert">
+              {handErr}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              disabled={!canUndo}
+              onClick={() => setHandErr(undoLastAction())}
+              className="h-14 shrink-0 rounded-full px-5 text-sm font-semibold disabled:opacity-40"
+            >
+              ひとつ戻る
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="cta"
+              onClick={onStart}
+              className="h-14 min-w-0 flex-1 rounded-full text-lg font-black tracking-[0.2em]"
+            >
+              次のハンドへ
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }

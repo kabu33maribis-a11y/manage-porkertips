@@ -59,7 +59,7 @@ export function PlayerSetup({
                 : isCurrent
                   ? `${c.active} animate-turn-glow`
                   : isAllIn
-                    ? "border-orange/70 bg-orange/10"
+                    ? "animate-allin border-danger bg-danger/10"
                     : "border-border bg-card shadow-sm"
             }`}
           >
@@ -81,16 +81,14 @@ export function PlayerSetup({
 
             {isAllIn && !isFolded && !isOut && (
               <div className="absolute -top-px inset-x-0 flex justify-center">
-                <span className="rounded-b-md bg-orange px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-navy sm:px-2 sm:text-[9px]">
+                <span className="rounded-b-md bg-danger px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:px-2 sm:text-[9px]">
                   ALL-IN
                 </span>
               </div>
             )}
 
             <div
-              className={`${compact ? "space-y-1" : "space-y-1.5 sm:space-y-2"} ${
-                isCurrent || isFolded || isOut || isAllIn ? "mt-3" : "mt-1"
-              }`}
+              className={`${compact ? "space-y-1" : "space-y-1.5 sm:space-y-2"} mt-3`}
             >
               {/* 名前 + ポジション */}
               <div className="flex min-w-0 items-center justify-between gap-1">
@@ -105,8 +103,19 @@ export function PlayerSetup({
                 </p>
                 {p.position && (
                   <span
-                    className={`inline-flex h-4 shrink-0 items-center rounded px-1 text-[9px] font-bold uppercase tracking-wide ${
-                      isFolded || isOut ? "bg-muted text-muted-foreground" : `${c.accent} text-white`
+                    className={`inline-flex shrink-0 items-center justify-center font-bold uppercase tracking-wide ${
+                      p.position === "D" &&
+                      poker.players.filter((pl) => pl.status !== "out").length !== 2
+                        ? `size-6 rounded-full border-2 text-[11px] font-black shadow-[0_2px_0_rgb(11_31_77/0.35),inset_0_1px_0_#fff] ${
+                            isFolded || isOut
+                              ? "border-muted-foreground/40 bg-muted text-muted-foreground"
+                              : "border-navy bg-white text-navy ring-2 ring-white"
+                          }`
+                        : `h-4 rounded px-1 text-[9px] ${
+                            isFolded || isOut
+                              ? "bg-muted text-muted-foreground"
+                              : `${c.accent} text-white`
+                          }`
                     }`}
                   >
                     {p.position === "D" && poker.players.filter((pl) => pl.status !== "out").length === 2

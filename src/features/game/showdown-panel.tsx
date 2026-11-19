@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { inCurrentHand, unresolvedPots } from "@/lib/poker";
 import { useGameStore } from "@/stores/game-store";
 
@@ -22,7 +21,6 @@ export function ShowdownPanel() {
   const [selected, setSelected] = useState<number[]>([]);
   /** 決定済みの順位（強い順の席グループ。グループ内はチョップ） */
   const [ranking, setRanking] = useState<number[][]>([]);
-  const [holeNotes, setHoleNotes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   const pending = poker.round === "Showdown" && poker.pot > 0;
@@ -42,16 +40,6 @@ export function ShowdownPanel() {
       ? nextPot.contenderIds
       : contenders.map(({ pl }) => pl.id),
   );
-
-  const buildShowdownNote = () => {
-    const parts = contenders
-      .map(({ pl }) => {
-        const cards = (holeNotes[pl.id] ?? "").trim();
-        return cards ? `${pl.name}: ${cards}` : null;
-      })
-      .filter(Boolean);
-    return parts.join(" / ");
-  };
 
   const toggle = (index: number) => {
     setError(null);
@@ -79,14 +67,13 @@ export function ShowdownPanel() {
       setError(null);
       return;
     }
-    const err = showdownResolve(next, buildShowdownNote() || undefined);
+    const err = showdownResolve(next);
     if (err) {
       setError(err);
       return;
     }
     setSelected([]);
     setRanking([]);
-    setHoleNotes({});
     setError(null);
   };
 
@@ -128,28 +115,7 @@ export function ShowdownPanel() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border bg-background/50 p-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-ink/80">
-          公開ハンド（任意）
-        </p>
-        {contenders.map(({ pl }) => (
-          <div key={pl.id} className="flex items-center gap-2">
-            <span className="w-16 shrink-0 truncate text-[11px] font-medium text-foreground">
-              {pl.name}
-            </span>
-            <Input
-              value={holeNotes[pl.id] ?? ""}
-              onChange={(e) =>
-                setHoleNotes((prev) => ({ ...prev, [pl.id]: e.target.value }))
-              }
-              placeholder="例: Ah Kd"
-              className="h-7 text-sm"
-            />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid shrink-0 grid-cols-2 gap-1.5">
+      <div className="grid min-h-0 flex-1 grid-cols-2 content-center gap-2">
         {poker.players.map((pl, i) => {
           const active = inCurrentHand(pl) && selectable.has(pl.id);
           const isSelected = selected.includes(i);
@@ -157,7 +123,7 @@ export function ShowdownPanel() {
             <Button
               key={pl.id}
               type="button"
-              className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition-all ${
+              className={`h-12 rounded-xl border px-3 text-base font-bold transition-all ${
                 active
                   ? `${PLAYER_COLORS[i % PLAYER_COLORS.length]}${isSelected ? ` ${SELECTED_RING}` : ""}`
                   : "border-border bg-muted/30 text-muted-foreground"
