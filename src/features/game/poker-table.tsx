@@ -185,6 +185,8 @@ export function PokerTable() {
   const undoLastAction = useGameStore((s) => s.undoLastAction);
   const canUndo = useGameStore((s) => s.undoStack.length > 0);
   const [handErr, setHandErr] = useState<string | null>(null);
+  const [flipped, setFlipped] = useState(false);
+  const [landscape, setLandscape] = useState(false);
 
   if (!hydrated) {
     return <TableSkeleton />;
@@ -203,10 +205,28 @@ export function PokerTable() {
   /* ── In-hand: single viewport, no sticky/fixed chrome ── */
   if (inHand) {
     return (
-      <div className="safe-top safe-bottom flex h-dvh flex-col overflow-hidden">
+      <div
+        className={`safe-top safe-bottom flex h-dvh flex-col overflow-hidden ${
+          flipped ? "rotate-180" : ""
+        }`}
+      >
         <header className="shrink-0 border-b border-border bg-background/80 backdrop-blur">
           <div className="mx-auto flex max-w-lg flex-col gap-2 px-3 py-2">
-            <StreetProgress currentStreetIndex={currentStreetIndex} />
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1 pr-1">
+                <StreetProgress currentStreetIndex={currentStreetIndex} />
+              </div>
+              <Button
+                type="button"
+                variant={flipped ? "default" : "outline"}
+                onClick={() => setFlipped((f) => !f)}
+                aria-pressed={flipped}
+                aria-label="画面の上下を反転"
+                className="h-9 shrink-0 rounded-xl px-3 text-[11px] font-medium"
+              >
+                <span className="inline-block rotate-180">⇅ 反転</span>
+              </Button>
+            </div>
             <div className="flex items-stretch gap-2">
               <div className="min-w-0 flex-1 rounded-2xl border border-border bg-card px-2.5 py-1.5 shadow-sm">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -279,14 +299,38 @@ export function PokerTable() {
     return (
       <div className="safe-top safe-bottom flex h-dvh flex-col overflow-hidden">
         <header className="shrink-0 border-b border-border bg-background/80 backdrop-blur">
-          <div className="mx-auto flex max-w-lg items-center justify-between gap-2 px-3 py-2">
+          <div
+            className={`mx-auto flex items-center justify-between gap-2 px-3 py-2 ${
+              landscape ? "max-w-4xl" : "max-w-lg"
+            }`}
+          >
             <ResetTableButton />
-            <GameLog />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={landscape ? "default" : "outline"}
+                onClick={() => setLandscape((l) => !l)}
+                aria-pressed={landscape}
+                aria-label="横画面レイアウトに切り替え"
+                className="h-9 rounded-xl px-3 text-[11px] font-medium"
+              >
+                ⟲ 横画面
+              </Button>
+              <GameLog />
+            </div>
           </div>
         </header>
 
-        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col justify-center gap-4 px-3 py-4">
-          <div className="rounded-3xl border border-orange/50 bg-gradient-to-b from-orange/15 to-orange/5 px-5 py-6 text-center shadow-sm">
+        <div
+          className={`mx-auto flex min-h-0 w-full flex-1 gap-4 overflow-y-auto px-3 py-4 ${
+            landscape ? "max-w-4xl flex-row items-center" : "max-w-lg flex-col justify-center"
+          }`}
+        >
+          <div
+            className={`rounded-3xl border border-orange/50 bg-gradient-to-b from-orange/15 to-orange/5 px-5 py-6 text-center shadow-sm ${
+              landscape ? "w-2/5 shrink-0" : ""
+            }`}
+          >
             <p className="text-[10px] font-bold tracking-[0.35em] text-orange-ink/70">
               HAND RESULT
             </p>
@@ -294,10 +338,16 @@ export function PokerTable() {
               {resultText}
             </p>
           </div>
-          <PlayerSetup locked compact />
+          <div className={landscape ? "min-w-0 flex-1 self-start" : ""}>
+            <PlayerSetup locked compact />
+          </div>
         </div>
 
-        <div className="mx-auto w-full max-w-lg shrink-0 space-y-2 px-3 pb-3">
+        <div
+          className={`mx-auto w-full shrink-0 space-y-2 px-3 pb-3 ${
+            landscape ? "max-w-4xl" : "max-w-lg"
+          }`}
+        >
           {handErr && (
             <p className="text-center text-sm text-danger" role="alert">
               {handErr}
