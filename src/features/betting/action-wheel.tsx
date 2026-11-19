@@ -17,6 +17,8 @@ type Props = {
   onFold: () => void;
   onCall: () => void;
   onRaise: (value: number) => void;
+  /** クロック表示中など縦幅を節約したいとき */
+  compact?: boolean;
 };
 
 /* ── geometry (viewBox units) ── */
@@ -106,6 +108,7 @@ export function ActionWheel({
   onFold,
   onCall,
   onRaise,
+  compact = false,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const press = useRef<{
@@ -232,7 +235,9 @@ export function ActionWheel({
     <svg
       ref={svgRef}
       viewBox={`0 0 ${VB_W} ${VB_H}`}
-      className="mx-auto block w-full max-w-[340px] max-h-[32dvh] select-none"
+      className={`mx-auto block w-full max-w-[340px] select-none ${
+        compact ? "max-h-[26dvh]" : "max-h-[32dvh]"
+      }`}
       style={{ touchAction: "none", fontFamily: SANS, WebkitTapHighlightColor: "transparent" }}
       onPointerDown={() => setPending(null)}
       role="group"

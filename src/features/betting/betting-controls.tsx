@@ -23,6 +23,8 @@ export function BettingControls() {
 
   if (!poker.handInProgress || poker.round === "Showdown") return null;
 
+  const clockActive = isClockTarget(clock, p?.id);
+
   // 手番が変わる（アクション・undo）たびにクロックを再スタートさせるキー
   const turnKey = [
     idx,
@@ -140,7 +142,7 @@ export function BettingControls() {
           </Button>
         </div>
 
-        {isClockTarget(clock, p?.id) && <TurnClock key={turnKey} playerIndex={idx} />}
+        {clockActive && <TurnClock key={turnKey} playerIndex={idx} />}
 
         <ActionWheel
           key={`${idx}-${poker.round}-${poker.currentBet}`}
@@ -154,6 +156,7 @@ export function BettingControls() {
           onFold={() => run({ type: "fold" })}
           onCall={() => run(canCheck ? { type: "check" } : { type: "call" })}
           onRaise={onRaise}
+          compact={clockActive}
         />
 
         {error && <p className="text-sm text-danger">{error}</p>}

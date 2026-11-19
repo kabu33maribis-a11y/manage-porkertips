@@ -118,7 +118,7 @@ export function TurnClock({ playerIndex }: { playerIndex: number }) {
 
   return (
     <div
-      className={`rounded-xl border-2 px-2.5 py-1.5 transition-colors ${
+      className={`rounded-xl border px-2 py-1 transition-colors ${
         timedOut
           ? "animate-pulse border-danger bg-danger/10"
           : warn
@@ -130,15 +130,15 @@ export function TurnClock({ playerIndex }: { playerIndex: number }) {
     >
       <div className="flex items-center gap-2">
         <p
-          className={`w-16 shrink-0 font-mono text-2xl font-extrabold leading-none tabular-nums ${
+          className={`w-14 shrink-0 font-mono text-lg font-extrabold leading-none tabular-nums ${
             timedOut || warn ? "text-danger" : "text-foreground"
           }`}
         >
-          {timedOut ? "TIME" : display}
-          {!timedOut && <span className="ml-0.5 text-xs font-bold">s</span>}
+          {display}
+          <span className="ml-0.5 text-[10px] font-bold">s</span>
         </p>
         <div className="min-w-0 flex-1">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className={`h-full rounded-full transition-[width] duration-200 ease-linear ${
                 warn || timedOut ? "bg-danger" : "bg-royal"
@@ -146,18 +146,13 @@ export function TurnClock({ playerIndex }: { playerIndex: number }) {
               style={{ width: `${ratio * 100}%` }}
             />
           </div>
-          {timedOut && view.remainingMs <= 0 && (
-            <p className="mt-0.5 text-[10px] font-semibold text-danger">
-              時間切れ（{display}s 経過）
-            </p>
-          )}
         </div>
         <Button
           type="button"
           variant="outline"
           onClick={togglePause}
           aria-pressed={paused}
-          className="h-9 shrink-0 rounded-xl px-2.5 text-[11px] font-medium"
+          className="h-7 shrink-0 rounded-lg px-2 text-[11px] font-medium"
         >
           {paused ? "▶ 再開" : "⏸ 停止"}
         </Button>
@@ -166,12 +161,12 @@ export function TurnClock({ playerIndex }: { playerIndex: number }) {
           variant="cta"
           disabled={cards <= 0}
           onClick={() => setError(spendTimeBankCard(playerIndex))}
-          className="h-9 shrink-0 rounded-xl px-2.5 text-[11px] font-bold disabled:opacity-40 disabled:shadow-none"
+          className="h-7 shrink-0 rounded-lg px-2 text-[11px] font-bold disabled:opacity-40 disabled:shadow-none"
         >
           ＋{cardSeconds}秒（残{cards}）
         </Button>
       </div>
-      {error && <p className="mt-1 text-[11px] text-danger">{error}</p>}
+      {error && <p className="mt-0.5 text-[10px] text-danger">{error}</p>}
     </div>
   );
 }
